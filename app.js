@@ -203,7 +203,10 @@ function renderPreview() {
         <article class="question-card">
           <div class="question-title">
             <span>Questão ${index + 1}</span>
-            <span>${question.typeLabel}</span>
+            <div class="question-actions">
+              <span>${question.typeLabel}</span>
+              <button class="danger remove-question" data-index="${index}" type="button">Remover</button>
+            </div>
           </div>
           <div class="question-body">${question.stem || "[Enunciado pendente]"}</div>
           ${alternatives ? `<div class="alternatives">${alternatives}</div>` : ""}
@@ -390,6 +393,27 @@ elements.loadExample.addEventListener("click", () => {
 
 elements.printExam.addEventListener("click", () => {
   window.print();
+});
+
+elements.questionList.addEventListener("click", (event) => {
+  const target = event.target;
+  if (!(target instanceof HTMLElement)) {
+    return;
+  }
+
+  if (!target.classList.contains("remove-question")) {
+    return;
+  }
+
+  const index = Number(target.dataset.index);
+  if (!Number.isInteger(index) || index < 0 || index >= state.questions.length) {
+    return;
+  }
+
+  state.questions.splice(index, 1);
+  elements.parserStatus.textContent = "Questão removida da prova";
+  renderPreview();
+  persistToStorage();
 });
 
 hydrateFromStorage();

@@ -384,6 +384,26 @@ label {
   font-weight: 800;
 }
 
+.question-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.danger {
+  border-radius: 999px;
+  padding: 0.35rem 0.72rem;
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: #b42318;
+  background: #fee4e2;
+  border: 1px solid #fecdca;
+}
+
+.danger:hover {
+  background: #fdd4d0;
+}
+
 .question-body {
   white-space: pre-wrap;
   line-height: 1.55;
@@ -460,7 +480,8 @@ label {
   .hero-actions,
   .chip,
   .toolbar,
-  .section-header:first-child {
+  .section-header:first-child,
+  .remove-question {
     display: none !important;
   }
 
