@@ -3,7 +3,7 @@ const templates = [
     id: "standard",
     name: "Padrão",
     detail: "Cabeçalho institucional e margens limpas.",
-    instructions: "1. Transcreva para a Folha de Respostas a opção que julgar correta em cada questão, preenchendo o campo correspondente com caneta de **tinta preta ou azul**.\n2. Nesta prova, as questões são de múltipla escolha, com cinco alternativas cada uma, sempre na sequência **A, B, C, D e E**, das quais somente uma é correta. \n3. Em hipótese alguma, o aluno poderá sair da sala com qualquer material referente a prova. Só será permitido ao aluno entregar sua prova escrita após 60 (sessenta) minutos do seu início."
+    instructions: "1. Transcreva para a Folha de Respostas a opção que julgar correta em cada questão, preenchendo o campo correspondente com caneta de **tinta preta ou azul**.\n2. Nesta prova, as questões são de múltipla escolha, com cinco alternativas cada uma, sempre na sequência **A, B, C, D e E**, das quais somente uma é correta. \n3. Em hipótese alguma, o aluno poderá sair da sala com qualquer material referente a prova. Só será permitido ao aluno entregar sua prova escrita após **60 (sessenta) minutos** do seu início."
   }
 ];
 
@@ -32,7 +32,6 @@ const elements = {
   studentName: document.getElementById("studentName"),
   examDate: document.getElementById("examDate"),
   examInstructions: document.getElementById("examInstructions"),
-  questionType: document.getElementById("questionType"),
   questionAlternativesColumnsWrap: document.getElementById("questionAlternativesColumnsWrap"),
   questionAlternativesColumns: document.getElementById("questionAlternativesColumns"),
   questionFontSize: document.getElementById("questionFontSize"),
@@ -207,6 +206,14 @@ function getQuestionAnswerMode() {
     : "alternatives";
 }
 
+function getQuestionTypeFromAnswerMode(answerMode = getQuestionAnswerMode()) {
+  return answerMode === "essay-lines" ? "essay" : "multiple";
+}
+
+function getQuestionTypeLabel(type = getQuestionTypeFromAnswerMode()) {
+  return type === "essay" ? "Dissertativa" : "Múltipla escolha";
+}
+
 function getQuestionEssayLineCount() {
   const value = Number(elements.questionEssayLines.value);
   if (!Number.isFinite(value)) {
@@ -284,7 +291,10 @@ function normalizeQuestion(item) {
       ? item.stemAlignment
       : "justify",
     stemColumns: clampNumber(Number(item.stemColumns) || 1, 1, 3),
-    answerMode: item.answerMode === "essay-lines" ? "essay-lines" : "alternatives",
+    answerMode:
+      item.answerMode === "essay-lines" || item.type === "essay"
+        ? "essay-lines"
+        : "alternatives",
     essayLineCount: clampNumber(Number(item.essayLineCount) || DEFAULT_QUESTION_ESSAY_LINES, 1, 30),
     imageDataUrls,
     imagePosition: item.imagePosition || "top",
@@ -737,7 +747,6 @@ function getPreviewPayload() {
       elements.studentName.value.trim() ||
       "_____________________________________________________",
     instructions: elements.examInstructions.value.trim(),
-    type: elements.questionType.value
   };
 }
 
@@ -956,8 +965,6 @@ function startEditingQuestion(index) {
       ? [item.imageDataUrl]
       : [];
 
-  const questionType = item.type || (normalizedAlternatives.length ? "multiple" : "essay");
-  elements.questionType.value = questionType;
   elements.stemOutput.value = item.stem || "";
   elements.alternativesOutput.value = normalizedAlternatives
     .map((alternative, altIndex) => {
@@ -986,13 +993,14 @@ function startEditingQuestion(index) {
   elements.questionImagePosition.value = item.imagePosition || "top";
   setImageScaleUi(item.imageScalePercent);
   state.currentImageDataUrls = [...imageDataUrls];
+  const questionType = getQuestionTypeFromAnswerMode(elements.questionAnswerMode.value);
   state.currentQuestion = {
     stem: item.stem || "",
     alternatives: normalizedAlternatives,
     type: questionType,
     typeLabel:
       item.typeLabel ||
-      elements.questionType.options[elements.questionType.selectedIndex].textContent,
+      getQuestionTypeLabel(questionType),
     stemAlignment: ["justify", "left", "center", "right"].includes(item.stemAlignment)
       ? item.stemAlignment
       : "justify",
@@ -1047,12 +1055,13 @@ function organizeCurrentQuestion() {
     return;
   }
 
-  const parsed = parseQuestion(rawText, elements.questionType.value);
+  const questionType = getQuestionTypeFromAnswerMode();
+  const parsed = parseQuestion(rawText, questionType);
   state.currentQuestion = {
     stem: parsed.stem,
     alternatives: parsed.alternatives,
-    type: elements.questionType.value,
-    typeLabel: elements.questionType.options[elements.questionType.selectedIndex].textContent,
+    type: questionType,
+    typeLabel: getQuestionTypeLabel(questionType),
     stemAlignment: getQuestionStemAlignment(),
     stemColumns: getQuestionStemColumns(),
     answerMode: getQuestionAnswerMode(),
@@ -1101,7 +1110,7 @@ function addCurrentQuestion() {
 
   state.questions.push({
     kind: "question",
-    type: state.currentQuestion?.type ?? elements.questionType.value,
+    type: state.currentQuestion?.type ?? getQuestionTypeFromAnswerMode(answerMode),
     stem: finalStem,
     alternatives: finalAlternatives,
     alternativesColumns: Number(elements.questionAlternativesColumns.value) || 1,
@@ -1115,7 +1124,7 @@ function addCurrentQuestion() {
     imageScalePercent: getQuestionImageScalePercent(),
     typeLabel:
       state.currentQuestion?.typeLabel ??
-      elements.questionType.options[elements.questionType.selectedIndex].textContent
+      getQuestionTypeLabel(getQuestionTypeFromAnswerMode(answerMode))
   });
 
   if (
@@ -1245,7 +1254,8 @@ async function onQuestionImageSelected(filesInput) {
 }
 
 function loadExample() {
-  elements.questionType.value = "multiple";
+  elements.questionAnswerMode.value = "alternatives";
+  updateQuestionAnswerModeUi();
   elements.rawQuestion.value = exampleQuestion;
   organizeCurrentQuestion();
 }
@@ -1266,9 +1276,6 @@ function bindLivePreview() {
     field.addEventListener("input", renderPreview);
   });
 
-  elements.questionType.addEventListener("change", () => {
-    organizeCurrentQuestion();
-  });
 }
 
 function bindFormattingButtons() {
