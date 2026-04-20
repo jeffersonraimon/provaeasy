@@ -126,10 +126,10 @@ function getQuestionImageScalePercent() {
 function getQuestionFontSize() {
   const value = Number(elements.questionFontSize.value);
   if (!Number.isFinite(value)) {
-    return 16;
+    return 13;
   }
 
-  return clampNumber(value, 12, 20);
+  return clampNumber(value, 10, 18);
 }
 
 function getImageDimensionsForPosition(imagePosition, scalePercent) {
@@ -397,7 +397,7 @@ function renderPreview() {
           : [];
       const imagePosition = item.imagePosition || "top";
       const imageScalePercent = clampNumber(Number(item.imageScalePercent) || 100, 10, 300);
-      const questionFontSize = clampNumber(Number(item.fontSize) || 16, 12, 20);
+      const questionFontSize = clampNumber(Number(item.fontSize) || 13, 10, 18);
       const isAlternativesAside =
         imagePosition === "alternatives-left" ||
         imagePosition === "alternatives-right";
@@ -468,7 +468,6 @@ function renderPreview() {
           <div class="question-title">
             <span>Questão ${questionIndex}</span>
             <div class="question-actions">
-              <span>${item.typeLabel}</span>
               <button class="danger remove-item" data-index="${index}" type="button">Remover</button>
             </div>
           </div>
@@ -586,7 +585,7 @@ function clearQuestionEditor() {
   elements.questionImageFile.value = "";
   elements.questionImagePosition.value = "top";
   elements.questionImageScalePercent.value = "100";
-  elements.questionFontSize.value = "16";
+  elements.questionFontSize.value = "13";
   state.currentQuestion = null;
   state.currentImageDataUrls = [];
   updateQuestionImagePreview();
@@ -750,7 +749,7 @@ function hydrateFromStorage() {
       ? data.questions.map((item) => ({
           kind: "question",
           alternativesColumns: 1,
-          fontSize: 16,
+          fontSize: 13,
           imageDataUrls: Array.isArray(item.imageDataUrls)
             ? item.imageDataUrls
             : item.imageDataUrl
