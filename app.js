@@ -491,11 +491,14 @@ function organizeCurrentQuestion() {
 }
 
 function addCurrentQuestion() {
-  if (!state.currentQuestion) {
+  const manualStem = elements.stemOutput.value.trim();
+  const manualAlternativesText = elements.alternativesOutput.value.trim();
+
+  // Só tenta organizar se ambos os campos estiverem vazios
+  if (!manualStem && !manualAlternativesText && !state.currentQuestion) {
     organizeCurrentQuestion();
   }
 
-  const manualStem = elements.stemOutput.value.trim();
   const fallbackStem = state.currentQuestion?.stem?.trim() ?? "";
   const finalStem = manualStem || fallbackStem;
   const alternatives = elements.alternativesOutput.value
