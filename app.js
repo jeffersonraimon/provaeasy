@@ -15,6 +15,9 @@ const state = {
   editingQuestionIndex: null
 };
 
+const EXAM_STORAGE_KEY = "prova-facil-mvp";
+const EXAM_EXPORT_VERSION = 1;
+
 const elements = {
   templateList: document.getElementById("templateList"),
   schoolName: document.getElementById("schoolName"),
@@ -59,6 +62,9 @@ const elements = {
   previewInstructions: document.getElementById("previewInstructions"),
   questionList: document.getElementById("questionList"),
   loadExample: document.getElementById("loadExample"),
+  importExam: document.getElementById("importExam"),
+  exportExam: document.getElementById("exportExam"),
+  importExamFile: document.getElementById("importExamFile"),
   organizeQuestion: document.getElementById("organizeQuestion"),
   clearQuestion: document.getElementById("clearQuestion"),
   addQuestion: document.getElementById("addQuestion"),
@@ -114,6 +120,205 @@ function renderInlineFormatting(value) {
 
 function getCurrentImageDataUrls() {
   return Array.isArray(state.currentImageDataUrls) ? state.currentImageDataUrls : [];
+}
+
+function normalizeAlternative(alternative, index) {
+  const fallbackLabel = String.fromCharCode(97 + index);
+  if (!alternative || typeof alternative !== "object") {
+    return { label: fallbackLabel, text: "" };
+  }
+
+  return {
+    label: String(alternative.label || fallbackLabel).toLowerCase(),
+    text: String(alternative.text || "")
+  };
+}
+
+function normalizeQuestion(item) {
+  if (!item || typeof item !== "object") {
+    return {
+      kind: "question",
+      type: "multiple",
+      stem: "",
+      alternatives: [],
+      alternativesColumns: 1,
+      fontSize: 13,
+      imageDataUrls: [],
+      imagePosition: "top",
+      imageScalePercent: 100,
+      typeLabel: "Múltipla escolha"
+    };
+  }
+
+  if (item.kind === "subject-break") {
+    return {
+      kind: "subject-break",
+      name: String(item.name || "")
+    };
+  }
+
+  const alternatives = Array.isArray(item.alternatives)
+    ? item.alternatives.map(normalizeAlternative)
+    : [];
+  const imageDataUrls = Array.isArray(item.imageDataUrls)
+    ? item.imageDataUrls.filter((value) => typeof value === "string")
+    : item.imageDataUrl && typeof item.imageDataUrl === "string"
+      ? [item.imageDataUrl]
+      : [];
+
+  return {
+    kind: "question",
+    type: item.type || (alternatives.length ? "multiple" : "essay"),
+    stem: String(item.stem || ""),
+    alternatives,
+    alternativesColumns: Number(item.alternativesColumns) || 1,
+    fontSize: clampNumber(Number(item.fontSize) || 13, 10, 18),
+    imageDataUrls,
+    imagePosition: item.imagePosition || "top",
+    imageScalePercent: clampNumber(Number(item.imageScalePercent) || 100, 10, 300),
+    typeLabel: String(item.typeLabel || "")
+  };
+}
+
+function normalizeExamData(data) {
+  const defaultTemplate = getTemplateById(data?.templateId ?? "standard");
+
+  return {
+    version: Number(data?.version) || EXAM_EXPORT_VERSION,
+    schoolName: typeof data?.schoolName === "string" ? data.schoolName : elements.schoolName.value,
+    examTitle: typeof data?.examTitle === "string" ? data.examTitle : elements.examTitle.value,
+    seriesName: typeof data?.seriesName === "string" ? data.seriesName : elements.seriesName.value,
+    groupName: typeof data?.groupName === "string" ? data.groupName : elements.groupName.value,
+    shiftName: typeof data?.shiftName === "string" ? data.shiftName : elements.shiftName.value,
+    studentName: typeof data?.studentName === "string" ? data.studentName : elements.studentName.value,
+    examDate: typeof data?.examDate === "string" ? data.examDate : elements.examDate.value,
+    examInstructions:
+      typeof data?.examInstructions === "string" ? data.examInstructions : elements.examInstructions.value,
+    rawQuestion: typeof data?.rawQuestion === "string" ? data.rawQuestion : elements.rawQuestion.value,
+    stemOutput: typeof data?.stemOutput === "string" ? data.stemOutput : elements.stemOutput.value,
+    alternativesOutput:
+      typeof data?.alternativesOutput === "string" ? data.alternativesOutput : elements.alternativesOutput.value,
+    templateId: getTemplateById(data?.templateId ?? defaultTemplate.id).id,
+    questions: Array.isArray(data?.questions) ? data.questions.map(normalizeQuestion) : [],
+    currentQuestion:
+      data?.currentQuestion && typeof data.currentQuestion === "object"
+        ? {
+            stem: String(data.currentQuestion.stem || ""),
+            alternatives: Array.isArray(data.currentQuestion.alternatives)
+              ? data.currentQuestion.alternatives.map(normalizeAlternative)
+              : [],
+            type: String(data.currentQuestion.type || "multiple"),
+            typeLabel: String(data.currentQuestion.typeLabel || "")
+          }
+        : null,
+    currentImageDataUrls: Array.isArray(data?.currentImageDataUrls)
+      ? data.currentImageDataUrls.filter((value) => typeof value === "string")
+      : [],
+    editingQuestionIndex: Number.isInteger(data?.editingQuestionIndex)
+      ? data.editingQuestionIndex
+      : null
+  };
+}
+
+function applyExamData(data) {
+  const normalized = normalizeExamData(data);
+
+  elements.schoolName.value = normalized.schoolName;
+  elements.examTitle.value = normalized.examTitle;
+  elements.seriesName.value = normalized.seriesName;
+  elements.groupName.value = normalized.groupName;
+  elements.shiftName.value = normalized.shiftName;
+  elements.studentName.value = normalized.studentName;
+  elements.examDate.value = normalized.examDate;
+  elements.examInstructions.value = normalized.examInstructions;
+  elements.rawQuestion.value = normalized.rawQuestion;
+  elements.stemOutput.value = normalized.stemOutput;
+  elements.alternativesOutput.value = normalized.alternativesOutput;
+  state.templateId = normalized.templateId;
+  state.questions = normalized.questions;
+  state.currentQuestion = normalized.currentQuestion;
+  state.currentImageDataUrls = normalized.currentImageDataUrls;
+  state.editingQuestionIndex = normalized.editingQuestionIndex;
+
+  if (!elements.examInstructions.value.trim()) {
+    elements.examInstructions.value = getTemplateById(state.templateId).instructions;
+  }
+
+  renderTemplates();
+  updateSubjectInputMode();
+  updateQuestionImagePreview();
+  renderPreview();
+}
+
+function getExamSnapshot() {
+  return {
+    version: EXAM_EXPORT_VERSION,
+    schoolName: elements.schoolName.value,
+    examTitle: elements.examTitle.value,
+    seriesName: elements.seriesName.value,
+    groupName: elements.groupName.value,
+    shiftName: elements.shiftName.value,
+    studentName: elements.studentName.value,
+    examDate: elements.examDate.value,
+    examInstructions: elements.examInstructions.value,
+    rawQuestion: elements.rawQuestion.value,
+    stemOutput: elements.stemOutput.value,
+    alternativesOutput: elements.alternativesOutput.value,
+    templateId: state.templateId,
+    questions: state.questions,
+    currentQuestion: state.currentQuestion,
+    currentImageDataUrls: getCurrentImageDataUrls(),
+    editingQuestionIndex: state.editingQuestionIndex
+  };
+}
+
+function downloadTextFile(content, fileName, mimeType) {
+  const blob = new Blob([content], { type: mimeType });
+  const objectUrl = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+
+  link.href = objectUrl;
+  link.download = fileName;
+  link.click();
+
+  setTimeout(() => URL.revokeObjectURL(objectUrl), 0);
+}
+
+function buildExamFileName() {
+  const title = elements.examTitle.value.trim() || "prova";
+  const safeTitle = title
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .toLowerCase();
+  const datePart = elements.examDate.value || new Date().toISOString().slice(0, 10);
+
+  return `${safeTitle || "prova"}-${datePart}.json`;
+}
+
+function exportExam() {
+  const snapshot = getExamSnapshot();
+  downloadTextFile(JSON.stringify(snapshot, null, 2), buildExamFileName(), "application/json");
+  elements.parserStatus.textContent = "Prova exportada em JSON";
+}
+
+async function importExamFile(file) {
+  if (!file) {
+    return;
+  }
+
+  try {
+    const text = await file.text();
+    const data = JSON.parse(text);
+    applyExamData(data);
+    persistToStorage();
+    elements.parserStatus.textContent = "Prova importada com sucesso";
+  } catch {
+    elements.parserStatus.textContent = "Não foi possível importar este arquivo JSON";
+  } finally {
+    elements.importExamFile.value = "";
+  }
 }
 
 function getQuestionImageScalePercent() {
@@ -831,74 +1036,33 @@ function bindFormattingButtons() {
 }
 
 function hydrateFromStorage() {
-  const saved = localStorage.getItem("prova-facil-mvp");
+  const saved = localStorage.getItem(EXAM_STORAGE_KEY);
   const defaultTemplate = getTemplateById("standard");
   if (!saved) {
-    state.templateId = defaultTemplate.id;
-    elements.examInstructions.value = defaultTemplate.instructions;
-    elements.examDate.valueAsDate = new Date();
+    applyExamData({
+      templateId: defaultTemplate.id,
+      examInstructions: defaultTemplate.instructions,
+      examDate: new Date().toISOString().slice(0, 10)
+    });
     return;
   }
 
   try {
-    const data = JSON.parse(saved);
-    elements.schoolName.value = data.schoolName ?? elements.schoolName.value;
-    elements.examTitle.value = data.examTitle ?? elements.examTitle.value;
-    elements.seriesName.value = data.seriesName ?? elements.seriesName.value;
-    elements.groupName.value = data.groupName ?? elements.groupName.value;
-    elements.shiftName.value = data.shiftName ?? elements.shiftName.value;
-    elements.studentName.value = data.studentName ?? elements.studentName.value;
-    elements.examDate.value = data.examDate ?? elements.examDate.value;
-    elements.examInstructions.value = data.examInstructions ?? elements.examInstructions.value;
-    elements.rawQuestion.value = data.rawQuestion ?? "";
-    elements.stemOutput.value = data.stemOutput ?? "";
-    elements.alternativesOutput.value = data.alternativesOutput ?? "";
-    state.templateId = getTemplateById(data.templateId ?? defaultTemplate.id).id;
-    if (!elements.examInstructions.value.trim()) {
-      elements.examInstructions.value = getTemplateById(state.templateId).instructions;
-    }
-    state.questions = Array.isArray(data.questions)
-      ? data.questions.map((item) => ({
-          kind: "question",
-          type: "multiple",
-          alternativesColumns: 1,
-          fontSize: 13,
-          imageDataUrls: Array.isArray(item.imageDataUrls)
-            ? item.imageDataUrls
-            : item.imageDataUrl
-              ? [item.imageDataUrl]
-              : [],
-          imagePosition: "top",
-          imageScalePercent: 100,
-          ...item
-        }))
-      : [];
+    applyExamData(JSON.parse(saved));
   } catch {
-    state.templateId = defaultTemplate.id;
-    elements.examInstructions.value = defaultTemplate.instructions;
-    elements.examDate.valueAsDate = new Date();
+    applyExamData({
+      templateId: defaultTemplate.id,
+      examInstructions: defaultTemplate.instructions,
+      examDate: new Date().toISOString().slice(0, 10)
+    });
   }
 }
 
 function persistToStorage() {
-  const data = {
-    schoolName: elements.schoolName.value,
-    examTitle: elements.examTitle.value,
-    seriesName: elements.seriesName.value,
-    groupName: elements.groupName.value,
-    shiftName: elements.shiftName.value,
-    studentName: elements.studentName.value,
-    examDate: elements.examDate.value,
-    examInstructions: elements.examInstructions.value,
-    rawQuestion: elements.rawQuestion.value,
-    stemOutput: elements.stemOutput.value,
-    alternativesOutput: elements.alternativesOutput.value,
-    templateId: state.templateId,
-    questions: state.questions
-  };
+  const data = getExamSnapshot();
 
   try {
-    localStorage.setItem("prova-facil-mvp", JSON.stringify(data));
+    localStorage.setItem(EXAM_STORAGE_KEY, JSON.stringify(data));
   } catch {
     elements.parserStatus.textContent = "Armazenamento cheio. Reduza imagens ou limpe a prova.";
   }
@@ -982,6 +1146,20 @@ elements.clearQuestionImage.addEventListener("click", () => {
 elements.loadExample.addEventListener("click", () => {
   loadExample();
   persistToStorage();
+});
+
+elements.exportExam.addEventListener("click", () => {
+  exportExam();
+});
+
+elements.importExam.addEventListener("click", () => {
+  elements.importExamFile.value = "";
+  elements.importExamFile.click();
+});
+
+elements.importExamFile.addEventListener("change", () => {
+  const [file] = Array.from(elements.importExamFile.files ?? []);
+  importExamFile(file);
 });
 
 elements.printExam.addEventListener("click", () => {

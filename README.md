@@ -11,6 +11,7 @@ Protótipo de aplicação para organizar questões enviadas pelos professores e 
 - Montagem da prova com múltiplas questões
 - Pré-visualização ao vivo
 - Impressão / exportação via navegador
+- Exportação e importação da prova em JSON
 - Persistência local no `localStorage`
 
 ## Como abrir
