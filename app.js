@@ -3,19 +3,7 @@ const templates = [
     id: "standard",
     name: "Padrão da escola",
     detail: "Cabeçalho institucional, margens limpas e questões numeradas.",
-    instructions: "Leia com atenção. Responda com letra legível e sem rasuras."
-  },
-  {
-    id: "compact",
-    name: "Formato compacto",
-    detail: "Pensado para provas curtas e revisões rápidas.",
-    instructions: "Use caneta azul ou preta e marque apenas uma alternativa."
-  },
-  {
-    id: "essay",
-    name: "Dissertativa",
-    detail: "Deixa espaço maior para resposta escrita.",
-    instructions: "Responda com desenvolvimento completo e argumentos claros."
+    instructions: "1. Transcreva para a Folha de Respostas a opção que julgar correta em cada questão, preenchendo o campo correspondente com caneta de tinta preta ou azul.\n2. Nesta prova, as questões são de múltipla escolha, com cinco alternativas cada uma, sempre na sequência A, B, C, D e E, das quais somente uma é correta. \n3. Em hipótese alguma, o aluno poderá sair da sala com qualquer material referente a prova. Só será permitido ao aluno entregar sua prova escrita após 60 (sessenta) minutos do seu início."
   }
 ];
 
