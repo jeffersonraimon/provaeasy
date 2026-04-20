@@ -474,7 +474,7 @@ label {
   letter-spacing: 0.12em;
   font-size: 12px;
   font-weight: 800;
-  color: var(--primary-dark);
+  color: #000;
 }
 
 .paper h3 {
@@ -494,6 +494,7 @@ label {
   margin-bottom: 0.75rem;
   white-space: pre-wrap;
   line-height: 1.35;
+  color: #000;
 }
 
 .header-lines {
@@ -543,7 +544,7 @@ label {
   letter-spacing: 0.03em;
   line-height: 1.15;
   text-transform: uppercase;
-  color: var(--primary-dark);
+  color: #000;
   width: 100%;
   text-align: center;
 }
@@ -670,6 +671,7 @@ label {
   display: grid;
   gap: 0.25rem;
   font-size: var(--question-font-size, 13px);
+  color: #000;
 }
 
 .alternatives.alternatives-cols-2 {
@@ -711,7 +713,7 @@ label {
 }
 
 .alternative strong {
-  color: var(--primary-dark);
+  color: #000;
 }
 
 .empty-state {
