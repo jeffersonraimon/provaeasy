@@ -349,8 +349,10 @@ label {
   background: white;
   border-radius: 22px;
   padding: 1.3rem;
-  min-height: 720px;
+  height: min(78vh, 920px);
   border: 1px solid rgba(15, 23, 42, 0.08);
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .paper-header {
@@ -617,6 +619,10 @@ label {
     grid-template-columns: 1fr;
   }
 
+  .paper {
+    height: 68vh;
+  }
+
   .question-alternatives-with-image.image-left,
   .question-alternatives-with-image.image-right {
     grid-template-columns: 1fr;
@@ -658,5 +664,7 @@ label {
 
   .paper {
     min-height: auto;
+    height: auto;
+    overflow: visible;
   }
 }
