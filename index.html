@@ -60,6 +60,14 @@
             Estudante
             <input id="studentName" type="text" placeholder="Nome do estudante" />
           </label>
+          <label>
+            Nome do professor (opcional)
+            <input id="professorName" type="text" placeholder="Nome do professor" />
+          </label>
+          <label class="checkbox-field">
+            <input id="professorNameEnabled" type="checkbox" />
+            Mostrar nome do professor no cabeçalho
+          </label>
           <div class="row">
             <label>
               Data
@@ -88,7 +96,7 @@
           </div>
           <div class="hero-actions">
             <button class="secondary" id="loadExample">Carregar exemplo</button>
-            <a class="secondary" href="./COMO_USAR.md" target="_blank" rel="noopener noreferrer">Como usar</a>
+            <a class="secondary" href="https://github.com/jeffersonraimon/provaeasy/blob/main/COMO_USAR.md" target="_blank" rel="noopener noreferrer">Como usar</a>
             <div class="transfer-menu" id="transferMenuWrap">
               <button
                 class="secondary transfer-trigger"
@@ -297,6 +305,15 @@
               <div class="paper-header">
                 <p class="school" id="previewSchool">COLÉGIO XXXXXXXXX</p>
               </div>
+              <div class="header-top-row">
+                <div class="note-box" aria-label="Nota">
+                  <span class="note-box-label">Nota:</span>
+                  <span class="note-box-square" aria-hidden="true"></span>
+                </div>
+              </div>
+              <p class="header-teacher hidden-field" id="previewTeacherWrap">
+                <strong>PROFESSOR(A):</strong> <span id="previewTeacher"></span>
+              </p>
               <div class="header-lines">
                 <p>
                   <strong>DATA:</strong> <span id="previewDate">_____/_____/_____</span>
