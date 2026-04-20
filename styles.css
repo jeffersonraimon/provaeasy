@@ -889,4 +889,16 @@ label {
   .question-alternatives-with-image.image-right {
     grid-template-columns: minmax(0, 1fr) auto;
   }
+
+  .alternatives.alternatives-cols-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .alternatives.alternatives-cols-3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+
+  .alternatives.alternatives-cols-4 {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  }
 }
