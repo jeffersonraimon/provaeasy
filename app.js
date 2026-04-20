@@ -87,7 +87,7 @@ function parseQuestion(rawText, type) {
   }
 
   if (type === "essay") {
-    return { stem: lines.join(" "), alternatives: [] };
+    return { stem: lines.join("\n"), alternatives: [] };
   }
 
   const alternativePattern = /^(?:[-*•]\s*)?([A-Ea-e]|[1-5])(?:[\).:-]|\s+)?\s*(.+)$/;
@@ -109,13 +109,13 @@ function parseQuestion(rawText, type) {
 
   if (!alternatives.length) {
     return {
-      stem: lines.join(" "),
+      stem: lines.join("\n"),
       alternatives: []
     };
   }
 
   return {
-    stem: stemLines.join(" "),
+    stem: stemLines.join("\n"),
     alternatives
   };
 }

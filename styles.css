@@ -335,6 +335,7 @@ label {
   background: #f8fafc;
   border: 1px solid var(--line);
   margin-bottom: 1rem;
+  white-space: pre-wrap;
 }
 
 .header-lines {
