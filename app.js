@@ -31,6 +31,7 @@ const elements = {
   questionType: document.getElementById("questionType"),
   questionAlternativesColumns: document.getElementById("questionAlternativesColumns"),
   questionFontSize: document.getElementById("questionFontSize"),
+  questionStemAlignment: document.getElementById("questionStemAlignment"),
   questionImageFile: document.getElementById("questionImageFile"),
   questionImagePosition: document.getElementById("questionImagePosition"),
   questionImageScalePercent: document.getElementById("questionImageScalePercent"),
@@ -130,6 +131,11 @@ function getCurrentImageDataUrls() {
   return Array.isArray(state.currentImageDataUrls) ? state.currentImageDataUrls : [];
 }
 
+function getQuestionStemAlignment() {
+  const value = elements.questionStemAlignment.value;
+  return ["justify", "left", "center", "right"].includes(value) ? value : "justify";
+}
+
 function normalizeAlternative(alternative, index) {
   const fallbackLabel = String.fromCharCode(97 + index);
   if (!alternative || typeof alternative !== "object") {
@@ -151,6 +157,7 @@ function normalizeQuestion(item) {
       alternatives: [],
       alternativesColumns: 1,
       fontSize: 13,
+      stemAlignment: "justify",
       imageDataUrls: [],
       imagePosition: "top",
       imageScalePercent: 100,
@@ -181,6 +188,9 @@ function normalizeQuestion(item) {
     alternatives,
     alternativesColumns: Number(item.alternativesColumns) || 1,
     fontSize: clampNumber(Number(item.fontSize) || 13, 10, 18),
+    stemAlignment: ["justify", "left", "center", "right"].includes(item.stemAlignment)
+      ? item.stemAlignment
+      : "justify",
     imageDataUrls,
     imagePosition: item.imagePosition || "top",
     imageScalePercent: clampNumber(Number(item.imageScalePercent) || 100, 10, 300),
@@ -206,6 +216,10 @@ function normalizeExamData(data) {
     stemOutput: typeof data?.stemOutput === "string" ? data.stemOutput : elements.stemOutput.value,
     alternativesOutput:
       typeof data?.alternativesOutput === "string" ? data.alternativesOutput : elements.alternativesOutput.value,
+    questionStemAlignment:
+      typeof data?.questionStemAlignment === "string" && ["justify", "left", "center", "right"].includes(data.questionStemAlignment)
+        ? data.questionStemAlignment
+        : "justify",
     templateId: getTemplateById(data?.templateId ?? defaultTemplate.id).id,
     questions: Array.isArray(data?.questions) ? data.questions.map(normalizeQuestion) : [],
     currentQuestion:
@@ -242,6 +256,7 @@ function applyExamData(data) {
   elements.rawQuestion.value = normalized.rawQuestion;
   elements.stemOutput.value = normalized.stemOutput;
   elements.alternativesOutput.value = normalized.alternativesOutput;
+  elements.questionStemAlignment.value = normalized.questionStemAlignment;
   state.templateId = normalized.templateId;
   state.questions = normalized.questions;
   state.currentQuestion = normalized.currentQuestion;
@@ -272,6 +287,7 @@ function getExamSnapshot() {
     rawQuestion: elements.rawQuestion.value,
     stemOutput: elements.stemOutput.value,
     alternativesOutput: elements.alternativesOutput.value,
+    questionStemAlignment: getQuestionStemAlignment(),
     templateId: state.templateId,
     questions: state.questions,
     currentQuestion: state.currentQuestion,
@@ -640,6 +656,9 @@ function renderPreview() {
           : [];
       const imagePosition = item.imagePosition || "top";
       const imageScalePercent = clampNumber(Number(item.imageScalePercent) || 100, 10, 300);
+      const stemAlignment = ["justify", "left", "center", "right"].includes(item.stemAlignment)
+        ? item.stemAlignment
+        : "justify";
       const questionFontSize = clampNumber(Number(item.fontSize) || 13, 10, 18);
       const isAlternativesAside =
         imagePosition === "alternatives-left" ||
@@ -670,11 +689,11 @@ function renderPreview() {
               imagePosition
             )
           : "";
-        const questionStemMarkup = `<span class="question-stem-inline">${renderInlineFormatting(item.stem || "[Enunciado pendente]")}</span>`;
-        const questionBody = usesSideLayout
+      const questionStemMarkup = `<span class="question-stem-inline text-align-${stemAlignment}">${renderInlineFormatting(item.stem || "[Enunciado pendente]")}</span>`;
+      const questionBody = usesSideLayout
         ? `
           <div class="question-body question-body-no-image">
-            <div class="question-body-text">${renderInlineFormatting(item.stem || "[Enunciado pendente]")}</div>
+            <div class="question-body-text text-align-${stemAlignment}">${renderInlineFormatting(item.stem || "[Enunciado pendente]")}</div>
           </div>
         `
         : `
@@ -764,6 +783,9 @@ function startEditingQuestion(index) {
     .join("\n\n");
   elements.questionAlternativesColumns.value = String(Number(item.alternativesColumns) || 1);
   elements.questionFontSize.value = String(clampNumber(Number(item.fontSize) || 13, 10, 18));
+  elements.questionStemAlignment.value = ["justify", "left", "center", "right"].includes(item.stemAlignment)
+    ? item.stemAlignment
+    : "justify";
   elements.questionImagePosition.value = item.imagePosition || "top";
   setImageScaleUi(item.imageScalePercent);
   state.currentImageDataUrls = [...imageDataUrls];
@@ -773,7 +795,10 @@ function startEditingQuestion(index) {
     type: questionType,
     typeLabel:
       item.typeLabel ||
-      elements.questionType.options[elements.questionType.selectedIndex].textContent
+      elements.questionType.options[elements.questionType.selectedIndex].textContent,
+    stemAlignment: ["justify", "left", "center", "right"].includes(item.stemAlignment)
+      ? item.stemAlignment
+      : "justify"
   };
   state.editingQuestionIndex = index;
   elements.addQuestion.textContent = "Salvar edição";
@@ -827,7 +852,8 @@ function organizeCurrentQuestion() {
     stem: parsed.stem,
     alternatives: parsed.alternatives,
     type: elements.questionType.value,
-    typeLabel: elements.questionType.options[elements.questionType.selectedIndex].textContent
+    typeLabel: elements.questionType.options[elements.questionType.selectedIndex].textContent,
+    stemAlignment: getQuestionStemAlignment()
   };
 
   elements.stemOutput.value = parsed.stem;
@@ -873,6 +899,7 @@ function addCurrentQuestion() {
     alternatives,
     alternativesColumns: Number(elements.questionAlternativesColumns.value) || 1,
     fontSize: getQuestionFontSize(),
+    stemAlignment: getQuestionStemAlignment(),
     imageDataUrls: [...getCurrentImageDataUrls()],
     imagePosition: elements.questionImagePosition.value || "top",
     imageScalePercent: getQuestionImageScalePercent(),
@@ -933,6 +960,7 @@ function clearQuestionEditor() {
   elements.questionImagePosition.value = "top";
   setImageScaleUi(100);
   elements.questionFontSize.value = "13";
+  elements.questionStemAlignment.value = "justify";
   state.currentQuestion = null;
   state.currentImageDataUrls = [];
   state.editingQuestionIndex = null;
