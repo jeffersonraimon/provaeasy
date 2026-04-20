@@ -145,7 +145,7 @@
             <div class="question-image-controls">
               <label>
                 Imagem da questão
-                <input id="questionImageFile" type="file" accept="image/*" />
+                <input id="questionImageFile" type="file" accept="image/*" multiple />
               </label>
               <label>
                 Posição da imagem
@@ -158,11 +158,18 @@
                   <option value="alternatives-right">Ao lado das alternativas (direita)</option>
                 </select>
               </label>
+              <label>
+                Tamanho da imagem
+                <div class="range-control">
+                  <input id="questionImageScalePercent" type="range" min="10" max="300" value="40" />
+                  <span id="questionImageScaleDisplay">40%</span>
+                </div>
+              </label>
               <button class="secondary" id="clearQuestionImage" type="button">Remover imagem</button>
             </div>
 
             <div class="question-image-preview hidden-field" id="questionImagePreviewWrap">
-              <img id="questionImagePreview" alt="Prévia da imagem da questão" />
+              <div id="questionImagePreview"></div>
             </div>
 
             <div class="subject-break-controls">

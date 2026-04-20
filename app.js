@@ -11,7 +11,7 @@ const state = {
   templateId: "standard",
   questions: [],
   currentQuestion: null,
-  currentImageDataUrl: ""
+  currentImageDataUrls: []
 };
 
 const elements = {
@@ -28,6 +28,7 @@ const elements = {
   questionAlternativesColumns: document.getElementById("questionAlternativesColumns"),
   questionImageFile: document.getElementById("questionImageFile"),
   questionImagePosition: document.getElementById("questionImagePosition"),
+  questionImageScalePercent: document.getElementById("questionImageScalePercent"),
   clearQuestionImage: document.getElementById("clearQuestionImage"),
   questionImagePreviewWrap: document.getElementById("questionImagePreviewWrap"),
   questionImagePreview: document.getElementById("questionImagePreview"),
@@ -83,6 +84,10 @@ function formatDate(value) {
   return `${day}/${month}/${year}`;
 }
 
+function clampNumber(value, min, max) {
+  return Math.min(max, Math.max(min, value));
+}
+
 function escapeHtml(value) {
   return value
     .replaceAll("&", "&amp;")
@@ -98,6 +103,64 @@ function renderInlineFormatting(value) {
     .replace(/__(.+?)__/g, "<u>$1</u>")
     .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
     .replace(/\*(.+?)\*/g, "<em>$1</em>");
+}
+
+function getCurrentImageDataUrls() {
+  return Array.isArray(state.currentImageDataUrls) ? state.currentImageDataUrls : [];
+}
+
+function getQuestionImageScalePercent() {
+  const value = Number(elements.questionImageScalePercent.value);
+  if (!Number.isFinite(value)) {
+    return 100;
+  }
+
+  return clampNumber(value, 10, 300);
+}
+
+function getImageDimensionsForPosition(imagePosition, scalePercent) {
+  const isAsideImage =
+    imagePosition === "alternatives-left" || imagePosition === "alternatives-right";
+
+  const baseWidth = isAsideImage ? 460 : 680;
+  const baseHeight = isAsideImage ? 340 : 560;
+  const factor = clampNumber(scalePercent, 10, 300) / 100;
+
+  return {
+    width: Math.round(baseWidth * factor),
+    height: Math.round(baseHeight * factor)
+  };
+}
+
+function getImageStyleAttribute(imagePosition, scalePercent) {
+  const dimensions = getImageDimensionsForPosition(imagePosition, scalePercent);
+  return `style="width: ${dimensions.width}px; max-width: ${dimensions.width}px; max-height: ${dimensions.height}px; height: auto; object-fit: contain;"`;
+}
+
+function renderQuestionImagesMarkup(
+  imageDataUrls,
+  altBase,
+  imageClass = "question-image",
+  scalePercent = 100,
+  imagePosition = "top"
+) {
+  if (!imageDataUrls.length) {
+    return "";
+  }
+
+  const styleAttribute = getImageStyleAttribute(imagePosition, scalePercent);
+
+  return `
+    <div class="question-images-stack">
+      ${imageDataUrls
+        .map(
+          (imageDataUrl, index) => `
+            <img class="${imageClass}" src="${imageDataUrl}" alt="${altBase} ${index + 1}" ${styleAttribute} />
+          `
+        )
+        .join("")}
+    </div>
+  `;
 }
 
 function wrapSelectionInTextarea(textarea, before, after) {
@@ -313,8 +376,13 @@ function renderPreview() {
       const normalizedAlternatives = Array.isArray(item.alternatives)
         ? item.alternatives
         : [];
-      const imageDataUrl = item.imageDataUrl || "";
+      const imageDataUrls = Array.isArray(item.imageDataUrls)
+        ? item.imageDataUrls
+        : item.imageDataUrl
+          ? [item.imageDataUrl]
+          : [];
       const imagePosition = item.imagePosition || "top";
+      const imageScalePercent = clampNumber(Number(item.imageScalePercent) || 100, 10, 300);
       const isAlternativesAside =
         imagePosition === "alternatives-left" ||
         imagePosition === "alternatives-right";
@@ -330,8 +398,14 @@ function renderPreview() {
         .join("");
 
       const inlineImageMarkup =
-        imageDataUrl && !isAlternativesAside
-          ? `<img class="question-image" src="${imageDataUrl}" alt="Imagem da questão ${questionIndex}" />`
+        imageDataUrls.length && !isAlternativesAside
+          ? renderQuestionImagesMarkup(
+              imageDataUrls,
+              `Imagem da questão ${questionIndex}`,
+              "question-image",
+              imageScalePercent,
+              imagePosition
+            )
           : "";
       const questionBody = isAlternativesAside
         ? `
@@ -341,9 +415,9 @@ function renderPreview() {
         `
         : `
           <div class="question-body question-body-${imagePosition}">
-            ${imageDataUrl && imagePosition !== "bottom" ? inlineImageMarkup : ""}
+            ${imageDataUrls.length && imagePosition !== "bottom" ? inlineImageMarkup : ""}
             <div class="question-body-text">${renderInlineFormatting(item.stem || "[Enunciado pendente]")}</div>
-            ${imageDataUrl && imagePosition === "bottom" ? inlineImageMarkup : ""}
+            ${imageDataUrls.length && imagePosition === "bottom" ? inlineImageMarkup : ""}
           </div>
         `;
 
@@ -360,15 +434,15 @@ function renderPreview() {
         : "";
 
       const alternativesWithImage =
-        isAlternativesAside && imageDataUrl && alternativesMarkup
+        isAlternativesAside && imageDataUrls.length && alternativesMarkup
           ? `
             <div class="question-alternatives-with-image ${
               imagePosition === "alternatives-left" ? "image-left" : "image-right"
             }">
               ${
                 imagePosition === "alternatives-left"
-                  ? `<img class="question-image question-image-aside" src="${imageDataUrl}" alt="Imagem da questão ${questionIndex}" />${alternativesMarkup}`
-                  : `${alternativesMarkup}<img class="question-image question-image-aside" src="${imageDataUrl}" alt="Imagem da questão ${questionIndex}" />`
+                  ? `${renderQuestionImagesMarkup(imageDataUrls, `Imagem da questão ${questionIndex}`, "question-image question-image-aside", imageScalePercent, imagePosition)}${alternativesMarkup}`
+                  : `${alternativesMarkup}${renderQuestionImagesMarkup(imageDataUrls, `Imagem da questão ${questionIndex}`, "question-image question-image-aside", imageScalePercent, imagePosition)}`
               }
             </div>
           `
@@ -447,8 +521,9 @@ function addCurrentQuestion() {
     stem: finalStem,
     alternatives,
     alternativesColumns: Number(elements.questionAlternativesColumns.value) || 1,
-    imageDataUrl: state.currentImageDataUrl,
+    imageDataUrls: [...getCurrentImageDataUrls()],
     imagePosition: elements.questionImagePosition.value || "top",
+    imageScalePercent: getQuestionImageScalePercent(),
     typeLabel:
       state.currentQuestion?.typeLabel ??
       elements.questionType.options[elements.questionType.selectedIndex].textContent
@@ -491,33 +566,44 @@ function clearQuestionEditor() {
   elements.alternativesOutput.value = "";
   elements.questionImageFile.value = "";
   elements.questionImagePosition.value = "top";
+  elements.questionImageScalePercent.value = "100";
   state.currentQuestion = null;
-  state.currentImageDataUrl = "";
+  state.currentImageDataUrls = [];
   updateQuestionImagePreview();
   elements.parserStatus.textContent = "Pronto para organizar";
 }
 
 function updateQuestionImagePreview() {
-  const hasImage = Boolean(state.currentImageDataUrl);
+  const imageDataUrls = getCurrentImageDataUrls();
+  const hasImage = imageDataUrls.length > 0;
   elements.questionImagePreviewWrap.classList.toggle("hidden-field", !hasImage);
-  if (hasImage) {
-    elements.questionImagePreview.src = state.currentImageDataUrl;
-  } else {
-    elements.questionImagePreview.removeAttribute("src");
-  }
+  elements.questionImagePreview.innerHTML = hasImage
+    ? renderQuestionImagesMarkup(
+        imageDataUrls,
+        "Prévia da imagem",
+        "",
+        getQuestionImageScalePercent(),
+        elements.questionImagePosition.value || "top"
+      )
+    : "";
 }
 
-async function onQuestionImageSelected(file) {
-  if (!file) {
-    state.currentImageDataUrl = "";
+async function onQuestionImageSelected(filesInput) {
+  const files = Array.isArray(filesInput)
+    ? filesInput
+    : filesInput
+      ? [filesInput]
+      : [];
+  if (!files.length) {
+    state.currentImageDataUrls = [];
     updateQuestionImagePreview();
     return;
   }
 
-  if (!file.type.startsWith("image/")) {
+  if (!files[0].type.startsWith("image/")) {
     elements.parserStatus.textContent = "Selecione um arquivo de imagem valido";
     elements.questionImageFile.value = "";
-    state.currentImageDataUrl = "";
+    state.currentImageDataUrls = [];
     updateQuestionImagePreview();
     return;
   }
@@ -525,12 +611,23 @@ async function onQuestionImageSelected(file) {
   elements.parserStatus.textContent = "Processando imagem...";
 
   try {
-    state.currentImageDataUrl = await compressImageFile(file);
-    elements.parserStatus.textContent = state.currentImageDataUrl
-      ? "Imagem carregada e otimizada para esta questão"
+    const imageDataUrls = [];
+    for (const imageFile of files) {
+      if (!imageFile.type.startsWith("image/")) {
+        continue;
+      }
+
+      imageDataUrls.push(await compressImageFile(imageFile));
+    }
+
+    state.currentImageDataUrls = imageDataUrls;
+    elements.parserStatus.textContent = imageDataUrls.length
+      ? `Imagem${imageDataUrls.length > 1 ? "s" : ""} carregada${
+          imageDataUrls.length > 1 ? "s" : ""
+        } e otimizada${imageDataUrls.length > 1 ? "s" : ""} para esta questão`
       : "Falha ao carregar imagem";
   } catch {
-    state.currentImageDataUrl = "";
+    state.currentImageDataUrls = [];
     elements.parserStatus.textContent = "Falha ao processar imagem";
   }
 
@@ -624,8 +721,13 @@ function hydrateFromStorage() {
       ? data.questions.map((item) => ({
           kind: "question",
           alternativesColumns: 1,
-          imageDataUrl: "",
+          imageDataUrls: Array.isArray(item.imageDataUrls)
+            ? item.imageDataUrls
+            : item.imageDataUrl
+              ? [item.imageDataUrl]
+              : [],
           imagePosition: "top",
+          imageScalePercent: 100,
           ...item
         }))
       : [];
@@ -699,15 +801,37 @@ elements.clearQuestion.addEventListener("click", () => {
 });
 
 elements.questionImageFile.addEventListener("change", () => {
-  const file = elements.questionImageFile.files?.[0];
-  onQuestionImageSelected(file);
+  const files = Array.from(elements.questionImageFile.files ?? []);
+  onQuestionImageSelected(files);
+});
+
+elements.questionImageScalePercent.addEventListener("input", () => {
+  const value = elements.questionImageScalePercent.value;
+  const percent = ((value - 10) / 290) * 100;
+  document.getElementById("questionImageScaleDisplay").textContent = value + "%";
+  elements.questionImageScalePercent.style.setProperty("--percent", percent + "%");
+  if (state.currentImageDataUrls.length) {
+    updateQuestionImagePreview();
+  }
+});
+
+elements.questionImageScalePercent.addEventListener("change", () => {
+  if (state.currentImageDataUrls.length) {
+    updateQuestionImagePreview();
+  }
+});
+
+elements.questionImagePosition.addEventListener("change", () => {
+  if (state.currentImageDataUrls.length) {
+    updateQuestionImagePreview();
+  }
 });
 
 elements.clearQuestionImage.addEventListener("click", () => {
   elements.questionImageFile.value = "";
-  state.currentImageDataUrl = "";
+  state.currentImageDataUrls = [];
   updateQuestionImagePreview();
-  elements.parserStatus.textContent = "Imagem removida desta questão";
+  elements.parserStatus.textContent = "Imagens removidas desta questão";
 });
 
 elements.loadExample.addEventListener("click", () => {
@@ -759,6 +883,11 @@ bindFormattingButtons();
 wirePersistence();
 updateSubjectInputMode();
 updateQuestionImagePreview();
+
+// Inicializar o gradiente do slider
+const initialValue = elements.questionImageScalePercent.value || 100;
+const initialPercent = ((initialValue - 10) / 290) * 100;
+elements.questionImageScalePercent.style.setProperty("--percent", initialPercent + "%");
 organizeCurrentQuestion();
 renderPreview();
 persistToStorage();
