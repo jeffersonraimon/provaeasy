@@ -11,7 +11,8 @@ const state = {
   templateId: "standard",
   questions: [],
   currentQuestion: null,
-  currentImageDataUrls: []
+  currentImageDataUrls: [],
+  editingQuestionIndex: null
 };
 
 const elements = {
@@ -30,6 +31,7 @@ const elements = {
   questionImageFile: document.getElementById("questionImageFile"),
   questionImagePosition: document.getElementById("questionImagePosition"),
   questionImageScalePercent: document.getElementById("questionImageScalePercent"),
+  questionImageScaleDisplay: document.getElementById("questionImageScaleDisplay"),
   clearQuestionImage: document.getElementById("clearQuestionImage"),
   questionImagePreviewWrap: document.getElementById("questionImagePreviewWrap"),
   questionImagePreview: document.getElementById("questionImagePreview"),
@@ -130,6 +132,14 @@ function getQuestionFontSize() {
   }
 
   return clampNumber(value, 10, 18);
+}
+
+function setImageScaleUi(scaleValue) {
+  const normalized = clampNumber(Number(scaleValue) || 100, 10, 300);
+  const percent = ((normalized - 10) / 290) * 100;
+  elements.questionImageScalePercent.value = String(normalized);
+  elements.questionImageScaleDisplay.textContent = `${normalized}%`;
+  elements.questionImageScalePercent.style.setProperty("--percent", `${percent}%`);
 }
 
 function getImageDimensionsForPosition(imagePosition, scalePercent) {
@@ -380,7 +390,7 @@ function renderPreview() {
           <article class="subject-break-card">
             <div class="subject-break-line">
               <span class="subject-break-name">${item.name}</span>
-              <button class="danger remove-item" data-index="${index}" type="button">Remover</button>
+              <button class="danger item-action remove-item" data-action="remove" data-index="${index}" type="button">Remover</button>
             </div>
           </article>
         `;
@@ -468,7 +478,10 @@ function renderPreview() {
           <div class="question-title">
             <span>Questão ${questionIndex}</span>
             <div class="question-actions">
-              <button class="danger remove-item" data-index="${index}" type="button">Remover</button>
+              <button class="secondary item-action" data-action="move-up" data-index="${index}" type="button">↑</button>
+              <button class="secondary item-action" data-action="move-down" data-index="${index}" type="button">↓</button>
+              <button class="secondary item-action" data-action="edit" data-index="${index}" type="button">Editar</button>
+              <button class="danger item-action remove-item" data-action="remove" data-index="${index}" type="button">Remover</button>
             </div>
           </div>
           ${questionBody}
@@ -477,6 +490,85 @@ function renderPreview() {
       `;
     })
     .join("");
+}
+
+function startEditingQuestion(index) {
+  const item = state.questions[index];
+  if (!item || item.kind !== "question") {
+    return;
+  }
+
+  const normalizedAlternatives = Array.isArray(item.alternatives) ? item.alternatives : [];
+  const imageDataUrls = Array.isArray(item.imageDataUrls)
+    ? item.imageDataUrls
+    : item.imageDataUrl
+      ? [item.imageDataUrl]
+      : [];
+
+  const questionType = item.type || (normalizedAlternatives.length ? "multiple" : "essay");
+  elements.questionType.value = questionType;
+  elements.stemOutput.value = item.stem || "";
+  elements.alternativesOutput.value = normalizedAlternatives
+    .map((alternative, altIndex) => {
+      const fallbackLabel = String.fromCharCode(97 + altIndex);
+      const label = String(alternative.label || fallbackLabel).toLowerCase();
+      return `${label}) ${alternative.text || ""}`.trim();
+    })
+    .join("\n");
+  elements.rawQuestion.value = [
+    elements.stemOutput.value,
+    elements.alternativesOutput.value
+  ]
+    .filter(Boolean)
+    .join("\n\n");
+  elements.questionAlternativesColumns.value = String(Number(item.alternativesColumns) || 1);
+  elements.questionFontSize.value = String(clampNumber(Number(item.fontSize) || 13, 10, 18));
+  elements.questionImagePosition.value = item.imagePosition || "top";
+  setImageScaleUi(item.imageScalePercent);
+  state.currentImageDataUrls = [...imageDataUrls];
+  state.currentQuestion = {
+    stem: item.stem || "",
+    alternatives: normalizedAlternatives,
+    type: questionType,
+    typeLabel:
+      item.typeLabel ||
+      elements.questionType.options[elements.questionType.selectedIndex].textContent
+  };
+  state.editingQuestionIndex = index;
+  elements.addQuestion.textContent = "Salvar edição";
+  elements.parserStatus.textContent = "Editando questão. Ajuste e clique em Salvar edição";
+  updateQuestionImagePreview();
+}
+
+function swapItems(firstIndex, secondIndex) {
+  const first = state.questions[firstIndex];
+  const second = state.questions[secondIndex];
+  state.questions[firstIndex] = second;
+  state.questions[secondIndex] = first;
+
+  if (state.editingQuestionIndex === firstIndex) {
+    state.editingQuestionIndex = secondIndex;
+  } else if (state.editingQuestionIndex === secondIndex) {
+    state.editingQuestionIndex = firstIndex;
+  }
+}
+
+function moveItem(index, direction) {
+  const targetIndex = direction === "up" ? index - 1 : index + 1;
+  if (
+    !Number.isInteger(index) ||
+    index < 0 ||
+    index >= state.questions.length ||
+    targetIndex < 0 ||
+    targetIndex >= state.questions.length
+  ) {
+    return;
+  }
+
+  swapItems(index, targetIndex);
+  elements.parserStatus.textContent = "Item movido";
+  renderPreview();
+  persistToStorage();
 }
 
 function organizeCurrentQuestion() {
@@ -535,6 +627,7 @@ function addCurrentQuestion() {
 
   state.questions.push({
     kind: "question",
+    type: state.currentQuestion?.type ?? elements.questionType.value,
     stem: finalStem,
     alternatives,
     alternativesColumns: Number(elements.questionAlternativesColumns.value) || 1,
@@ -547,7 +640,20 @@ function addCurrentQuestion() {
       elements.questionType.options[elements.questionType.selectedIndex].textContent
   });
 
-  elements.parserStatus.textContent = "Questão adicionada à prova";
+  if (
+    Number.isInteger(state.editingQuestionIndex) &&
+    state.editingQuestionIndex >= 0 &&
+    state.editingQuestionIndex < state.questions.length - 1
+  ) {
+    const updatedQuestion = state.questions.pop();
+    state.questions[state.editingQuestionIndex] = updatedQuestion;
+    elements.parserStatus.textContent = "Questão atualizada na prova";
+  } else {
+    elements.parserStatus.textContent = "Questão adicionada à prova";
+  }
+
+  state.editingQuestionIndex = null;
+  elements.addQuestion.textContent = "Adicionar à prova";
   renderPreview();
 }
 
@@ -584,10 +690,12 @@ function clearQuestionEditor() {
   elements.alternativesOutput.value = "";
   elements.questionImageFile.value = "";
   elements.questionImagePosition.value = "top";
-  elements.questionImageScalePercent.value = "100";
+  setImageScaleUi(100);
   elements.questionFontSize.value = "13";
   state.currentQuestion = null;
   state.currentImageDataUrls = [];
+  state.editingQuestionIndex = null;
+  elements.addQuestion.textContent = "Adicionar à prova";
   updateQuestionImagePreview();
   elements.parserStatus.textContent = "Pronto para organizar";
 }
@@ -748,6 +856,7 @@ function hydrateFromStorage() {
     state.questions = Array.isArray(data.questions)
       ? data.questions.map((item) => ({
           kind: "question",
+          type: "multiple",
           alternativesColumns: 1,
           fontSize: 13,
           imageDataUrls: Array.isArray(item.imageDataUrls)
@@ -841,9 +950,7 @@ elements.questionImageFile.addEventListener("change", () => {
 
 elements.questionImageScalePercent.addEventListener("input", () => {
   const value = elements.questionImageScalePercent.value;
-  const percent = ((value - 10) / 290) * 100;
-  document.getElementById("questionImageScaleDisplay").textContent = value + "%";
-  elements.questionImageScalePercent.style.setProperty("--percent", percent + "%");
+  setImageScaleUi(value);
   if (state.currentImageDataUrls.length) {
     updateQuestionImagePreview();
   }
@@ -895,17 +1002,45 @@ elements.questionList.addEventListener("click", (event) => {
     return;
   }
 
-  if (!target.classList.contains("remove-item")) {
+  const actionTarget = target.closest("button[data-action]");
+  if (!(actionTarget instanceof HTMLElement)) {
     return;
   }
 
-  const index = Number(target.dataset.index);
+  const action = actionTarget.dataset.action;
+  const index = Number(actionTarget.dataset.index);
   if (!Number.isInteger(index) || index < 0 || index >= state.questions.length) {
     return;
   }
 
+  if (action === "edit") {
+    startEditingQuestion(index);
+    persistToStorage();
+    return;
+  }
+
+  if (action === "move-up") {
+    moveItem(index, "up");
+    return;
+  }
+
+  if (action === "move-down") {
+    moveItem(index, "down");
+    return;
+  }
+
+  if (action !== "remove") {
+    return;
+  }
+
   state.questions.splice(index, 1);
-  elements.parserStatus.textContent = "Questão removida da prova";
+  if (state.editingQuestionIndex === index) {
+    clearQuestionEditor();
+  } else if (Number.isInteger(state.editingQuestionIndex) && state.editingQuestionIndex > index) {
+    state.editingQuestionIndex -= 1;
+  }
+
+  elements.parserStatus.textContent = "Item removido da prova";
   renderPreview();
   persistToStorage();
 });
@@ -920,8 +1055,7 @@ updateQuestionImagePreview();
 
 // Inicializar o gradiente do slider
 const initialValue = elements.questionImageScalePercent.value || 100;
-const initialPercent = ((initialValue - 10) / 290) * 100;
-elements.questionImageScalePercent.style.setProperty("--percent", initialPercent + "%");
+setImageScaleUi(initialValue);
 organizeCurrentQuestion();
 renderPreview();
 persistToStorage();
