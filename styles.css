@@ -213,6 +213,14 @@ label {
   margin: 1rem 0 1.2rem;
 }
 
+.subject-break-controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.7rem;
+  align-items: end;
+  margin-bottom: 1rem;
+}
+
 .primary,
 .secondary {
   padding: 0.9rem 1rem;
@@ -384,6 +392,37 @@ label {
   border-bottom: 1px solid rgba(15, 23, 42, 0.08);
 }
 
+.subject-break-card {
+  padding: 0.35rem 0;
+  border-top: 1px dashed rgba(15, 118, 110, 0.35);
+  border-bottom: 1px dashed rgba(15, 118, 110, 0.35);
+  background: transparent;
+}
+
+.subject-break-name {
+  font-size: 0.95rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--primary-dark);
+  width: 100%;
+  text-align: center;
+}
+
+.subject-break-line {
+  position: relative;
+  min-height: 1.9rem;
+  display: flex;
+  align-items: center;
+}
+
+.subject-break-line .remove-item {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
 .question-card:last-child {
   border-bottom: 0;
 }
@@ -469,6 +508,7 @@ label {
   .row-3,
   .row-1,
   .toolbar,
+  .subject-break-controls,
   .hero-actions,
   .parsed-grid,
   .section-header {
@@ -493,7 +533,7 @@ label {
   .chip,
   .toolbar,
   .section-header:first-child,
-  .remove-question,
+  .remove-item,
   .clear-exam {
     display: none !important;
   }

@@ -62,10 +62,6 @@
           </label>
           <div class="row">
             <label>
-              Disciplina
-              <input id="subjectName" type="text" value="Língua Portuguesa" />
-            </label>
-            <label>
               Data
               <input id="examDate" type="date" />
             </label>
@@ -128,6 +124,18 @@
               <button class="primary" id="addQuestion">Adicionar à prova</button>
             </div>
 
+            <div class="subject-break-controls">
+              <label>
+                Inserir disciplina no meio da prova
+                <input
+                  id="sectionSubjectName"
+                  type="text"
+                  placeholder="Ex.: Matemática, História, Ciências"
+                />
+              </label>
+              <button class="secondary" id="addSubjectBreak" type="button">Adicionar disciplina</button>
+            </div>
+
             <div class="parsed-grid">
               <label>
                 Enunciado
@@ -156,7 +164,6 @@
               <div class="paper-header">
                 <p class="school" id="previewSchool">CEON - COLÉGIO ESTADUAL OURO NEGRO</p>
                 <h3 id="previewTitle">Avaliação Bimestral</h3>
-                <p class="meta" id="previewSubject">Disciplina: Língua Portuguesa</p>
               </div>
               <div class="header-lines">
                 <p>

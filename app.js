@@ -33,18 +33,17 @@ const elements = {
   groupName: document.getElementById("groupName"),
   shiftName: document.getElementById("shiftName"),
   studentName: document.getElementById("studentName"),
-  subjectName: document.getElementById("subjectName"),
   examDate: document.getElementById("examDate"),
   examInstructions: document.getElementById("examInstructions"),
   questionType: document.getElementById("questionType"),
   rawQuestion: document.getElementById("rawQuestion"),
   stemOutput: document.getElementById("stemOutput"),
   alternativesOutput: document.getElementById("alternativesOutput"),
+  sectionSubjectName: document.getElementById("sectionSubjectName"),
   parserStatus: document.getElementById("parserStatus"),
   questionCount: document.getElementById("questionCount"),
   previewSchool: document.getElementById("previewSchool"),
   previewTitle: document.getElementById("previewTitle"),
-  previewSubject: document.getElementById("previewSubject"),
   previewDate: document.getElementById("previewDate"),
   previewSeries: document.getElementById("previewSeries"),
   previewGroup: document.getElementById("previewGroup"),
@@ -56,6 +55,7 @@ const elements = {
   organizeQuestion: document.getElementById("organizeQuestion"),
   clearQuestion: document.getElementById("clearQuestion"),
   addQuestion: document.getElementById("addQuestion"),
+  addSubjectBreak: document.getElementById("addSubjectBreak"),
   printExam: document.getElementById("printExam"),
   clearExam: document.getElementById("clearExam")
 };
@@ -134,7 +134,6 @@ function getPreviewPayload() {
     student:
       elements.studentName.value.trim() ||
       "_____________________________________________________",
-    subject: elements.subjectName.value.trim() || "-",
     instructions: elements.examInstructions.value.trim(),
     type: elements.questionType.value
   };
@@ -166,17 +165,21 @@ function renderTemplates() {
 
 function renderPreview() {
   const payload = getPreviewPayload();
+  const questionOnlyCount = state.questions.filter(
+    (item) => item.kind !== "subject-break"
+  ).length;
 
   elements.previewSchool.textContent = payload.school;
   elements.previewTitle.textContent = payload.title;
-  elements.previewSubject.textContent = `Disciplina: ${payload.subject}`;
   elements.previewDate.textContent = payload.date;
   elements.previewSeries.textContent = payload.series;
   elements.previewGroup.textContent = payload.group;
   elements.previewShift.textContent = payload.shift;
   elements.previewStudent.textContent = payload.student;
   elements.previewInstructions.textContent = payload.instructions;
-  elements.questionCount.textContent = `${state.questions.length} ${state.questions.length === 1 ? "questão" : "questões"}`;
+  elements.questionCount.textContent = `${questionOnlyCount} ${
+    questionOnlyCount === 1 ? "questão" : "questões"
+  }`;
 
   if (!state.questions.length) {
     elements.questionList.innerHTML = `
@@ -187,9 +190,22 @@ function renderPreview() {
     return;
   }
 
+  let questionIndex = 0;
   elements.questionList.innerHTML = state.questions
-    .map((question, index) => {
-      const alternatives = question.alternatives
+    .map((item, index) => {
+      if (item.kind === "subject-break") {
+        return `
+          <article class="subject-break-card">
+            <div class="subject-break-line">
+              <span class="subject-break-name">${item.name}</span>
+              <button class="danger remove-item" data-index="${index}" type="button">Remover</button>
+            </div>
+          </article>
+        `;
+      }
+
+      questionIndex += 1;
+      const alternatives = item.alternatives
         .map(
           (alternative) => `
             <div class="alternative">
@@ -203,13 +219,13 @@ function renderPreview() {
       return `
         <article class="question-card">
           <div class="question-title">
-            <span>Questão ${index + 1}</span>
+            <span>Questão ${questionIndex}</span>
             <div class="question-actions">
-              <span>${question.typeLabel}</span>
-              <button class="danger remove-question" data-index="${index}" type="button">Remover</button>
+              <span>${item.typeLabel}</span>
+              <button class="danger remove-item" data-index="${index}" type="button">Remover</button>
             </div>
           </div>
-          <div class="question-body">${question.stem || "[Enunciado pendente]"}</div>
+          <div class="question-body">${item.stem || "[Enunciado pendente]"}</div>
           ${alternatives ? `<div class="alternatives">${alternatives}</div>` : ""}
         </article>
       `;
@@ -253,6 +269,7 @@ function addCurrentQuestion() {
   }
 
   state.questions.push({
+    kind: "question",
     stem: elements.stemOutput.value.trim() || state.currentQuestion.stem,
     alternatives: elements.alternativesOutput.value
       .split(/\r?\n/)
@@ -270,6 +287,23 @@ function addCurrentQuestion() {
   });
 
   elements.parserStatus.textContent = "Questão adicionada à prova";
+  renderPreview();
+}
+
+function addSubjectBreak() {
+  const subjectName = elements.sectionSubjectName.value.trim();
+  if (!subjectName) {
+    elements.parserStatus.textContent = "Digite o nome da disciplina para inserir";
+    return;
+  }
+
+  state.questions.push({
+    kind: "subject-break",
+    name: subjectName
+  });
+
+  elements.sectionSubjectName.value = "";
+  elements.parserStatus.textContent = "Disciplina inserida na prova";
   renderPreview();
 }
 
@@ -295,7 +329,6 @@ function bindLivePreview() {
     elements.groupName,
     elements.shiftName,
     elements.studentName,
-    elements.subjectName,
     elements.examDate,
     elements.examInstructions
   ];
@@ -324,11 +357,12 @@ function hydrateFromStorage() {
     elements.groupName.value = data.groupName ?? elements.groupName.value;
     elements.shiftName.value = data.shiftName ?? elements.shiftName.value;
     elements.studentName.value = data.studentName ?? elements.studentName.value;
-    elements.subjectName.value = data.subjectName ?? elements.subjectName.value;
     elements.examDate.value = data.examDate ?? elements.examDate.value;
     elements.examInstructions.value = data.examInstructions ?? elements.examInstructions.value;
     state.templateId = data.templateId ?? state.templateId;
-    state.questions = Array.isArray(data.questions) ? data.questions : [];
+    state.questions = Array.isArray(data.questions)
+      ? data.questions.map((item) => ({ kind: "question", ...item }))
+      : [];
   } catch {
     elements.examDate.valueAsDate = new Date();
   }
@@ -342,7 +376,6 @@ function persistToStorage() {
     groupName: elements.groupName.value,
     shiftName: elements.shiftName.value,
     studentName: elements.studentName.value,
-    subjectName: elements.subjectName.value,
     examDate: elements.examDate.value,
     examInstructions: elements.examInstructions.value,
     templateId: state.templateId,
@@ -360,7 +393,6 @@ function wirePersistence() {
     elements.groupName,
     elements.shiftName,
     elements.studentName,
-    elements.subjectName,
     elements.examDate,
     elements.examInstructions
   ];
@@ -379,6 +411,11 @@ elements.organizeQuestion.addEventListener("click", () => {
 
 elements.addQuestion.addEventListener("click", () => {
   addCurrentQuestion();
+  persistToStorage();
+});
+
+elements.addSubjectBreak.addEventListener("click", () => {
+  addSubjectBreak();
   persistToStorage();
 });
 
@@ -414,7 +451,7 @@ elements.questionList.addEventListener("click", (event) => {
     return;
   }
 
-  if (!target.classList.contains("remove-question")) {
+  if (!target.classList.contains("remove-item")) {
     return;
   }
 
