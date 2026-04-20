@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Prova Fácil MVP</title>
+    <title>Prova Fácil MVP - JR</title>
     <meta
       name="description"
       content="MVP para organizar questões bagunçadas e montar provas padronizadas com templates da escola."
@@ -22,7 +22,7 @@
         <div class="brand">
           <span class="brand-mark">PF</span>
           <div>
-            <p>Prova Fácil</p>
+            <p>Prova Fácil - JR</p>
             <span>MVP de padronização de questões</span>
           </div>
         </div>
@@ -40,7 +40,7 @@
           </label>
           <label>
             Título
-            <input id="examTitle" type="text" value="Avaliação Bimestral" />
+            <input id="examTitle" type="text" value="SIMULADO DA X UNIDADE - XXXXX" />
           </label>
           <div class="row row-3">
             <label>
@@ -62,10 +62,6 @@
           </label>
           <div class="row">
             <label>
-              Disciplina
-              <input id="subjectName" type="text" value="Língua Portuguesa" />
-            </label>
-            <label>
               Data
               <input id="examDate" type="date" />
             </label>
@@ -82,6 +78,12 @@
           </div>
           <label>
             Instruções
+            <div class="inline-format-actions">
+              <button class="format-button" id="toggleInstructionsBold" type="button">B</button>
+              <button class="format-button" id="toggleInstructionsItalic" type="button">I</button>
+              <button class="format-button" id="toggleInstructionsUnderline" type="button">U</button>
+              <span>Selecione o trecho e clique para formatar</span>
+            </div>
             <textarea id="examInstructions" rows="4">Leia com atenção e responda usando caneta azul ou preta.</textarea>
           </label>
         </section>
@@ -117,7 +119,7 @@
               Texto bruto
               <textarea
                 id="rawQuestion"
-                rows="12"
+                rows="4"
                 placeholder="Cole aqui a questão do professor, mesmo que venha sem formatação."
               ></textarea>
             </label>
@@ -128,10 +130,100 @@
               <button class="primary" id="addQuestion">Adicionar à prova</button>
             </div>
 
+            <div class="row">
+              <label>
+                Colunas desta questão
+                <select id="questionAlternativesColumns">
+                  <option value="1">1 coluna</option>
+                  <option value="2">2 colunas</option>
+                  <option value="3">3 colunas</option>
+                  <option value="4">4 colunas</option>
+                </select>
+              </label>
+              <label>
+                Tamanho da fonte da questão
+                <select id="questionFontSize">
+                  <option value="10">10 px</option>
+                  <option value="11">11 px</option>
+                  <option value="12">12 px</option>
+                  <option value="13" selected>13 px</option>
+                  <option value="14">14 px</option>
+                  <option value="15">15 px</option>
+                  <option value="16">16 px</option>
+                  <option value="17">17 px</option>
+                  <option value="18">18 px</option>
+                </select>
+              </label>
+            </div>
+
+            <div class="question-image-controls">
+              <label>
+                Imagem da questão
+                <input id="questionImageFile" type="file" accept="image/*" multiple />
+              </label>
+              <label>
+                Posição da imagem
+                <select id="questionImagePosition">
+                  <option value="top">Acima do texto</option>
+                  <option value="left">Esquerda (texto se adapta)</option>
+                  <option value="right">Direita (texto se adapta)</option>
+                  <option value="bottom">Abaixo do texto</option>
+                  <option value="alternatives-left">Ao lado das alternativas (esquerda)</option>
+                  <option value="alternatives-right">Ao lado das alternativas (direita)</option>
+                </select>
+              </label>
+              <label>
+                Tamanho da imagem
+                <div class="range-control">
+                  <input id="questionImageScalePercent" type="range" min="10" max="300" value="40" />
+                  <span id="questionImageScaleDisplay">40%</span>
+                </div>
+              </label>
+              <button class="secondary" id="clearQuestionImage" type="button">Remover imagem</button>
+            </div>
+
+            <div class="question-image-preview hidden-field" id="questionImagePreviewWrap">
+              <div id="questionImagePreview"></div>
+            </div>
+
+            <div class="subject-break-controls">
+              <label>
+                Inserir disciplina no meio da prova
+                <select id="sectionSubjectSelect">
+                  <option value="LINGUA PORTUGUESA">LÍNGUA PORTUGUESA</option>
+                  <option value="REDACAO">REDAÇÃO</option>
+                  <option value="LINGUA INGLESA">LÍNGUA INGLESA</option>
+                  <option value="GEOGRAFIA">GEOGRAFIA</option>
+                  <option value="HISTORIA">HISTÓRIA</option>
+                  <option value="FILOSOFIA">FILOSOFIA</option>
+                  <option value="BIOLOGIA">BIOLOGIA</option>
+                  <option value="QUIMICA">QUÍMICA</option>
+                  <option value="MATEMATICA">MATEMÁTICA</option>
+                  <option value="FISICA">FÍSICA</option>
+                  <option value="OUTRO">Outro:</option>
+                </select>
+              </label>
+              <label id="sectionSubjectOtherWrap" class="hidden-field">
+                Outro nome
+                <input
+                  id="sectionSubjectOther"
+                  type="text"
+                  placeholder="Digite a disciplina"
+                />
+              </label>
+              <button class="secondary" id="addSubjectBreak" type="button">Adicionar disciplina</button>
+            </div>
+
             <div class="parsed-grid">
               <label>
                 Enunciado
-                <textarea id="stemOutput" rows="7"></textarea>
+                <div class="inline-format-actions">
+                  <button class="format-button" id="toggleStemBold" type="button">B</button>
+                  <button class="format-button" id="toggleStemItalic" type="button">I</button>
+                  <button class="format-button" id="toggleStemUnderline" type="button">U</button>
+                  <span>Selecione o trecho e clique para formatar</span>
+                </div>
+                <textarea id="stemOutput" rows="5"></textarea>
               </label>
               <label>
                 Alternativas
@@ -146,14 +238,15 @@
                 <h2>Pré-visualização</h2>
                 <p>Veja como a prova vai ficar antes de imprimir.</p>
               </div>
-              <span class="chip" id="questionCount">0 questões</span>
+              <div class="preview-actions">
+                <span class="chip" id="questionCount">0 questões</span>
+                <button class="secondary clear-exam" id="clearExam" type="button">Limpar prova inteira</button>
+              </div>
             </div>
 
             <div class="paper" id="examPreview">
               <div class="paper-header">
                 <p class="school" id="previewSchool">CEON - COLÉGIO ESTADUAL OURO NEGRO</p>
-                <h3 id="previewTitle">Avaliação Bimestral</h3>
-                <p class="meta" id="previewSubject">Disciplina: Língua Portuguesa</p>
               </div>
               <div class="header-lines">
                 <p>
@@ -166,6 +259,9 @@
                   <strong>ESTUDANTE:</strong>
                   <span id="previewStudent">_____________________________________________________</span>
                 </p>
+              </div>
+              <div class="paper-header">
+                <h3 id="previewTitle">SIMULADO DA X UNIDADE - XXXXX</h3>
               </div>
               <div class="paper-instructions" id="previewInstructions">
                 Leia com atenção e responda usando caneta azul ou preta.

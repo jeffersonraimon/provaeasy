@@ -3,26 +3,16 @@ const templates = [
     id: "standard",
     name: "Padrão da escola",
     detail: "Cabeçalho institucional, margens limpas e questões numeradas.",
-    instructions: "Leia com atenção. Responda com letra legível e sem rasuras."
-  },
-  {
-    id: "compact",
-    name: "Formato compacto",
-    detail: "Pensado para provas curtas e revisões rápidas.",
-    instructions: "Use caneta azul ou preta e marque apenas uma alternativa."
-  },
-  {
-    id: "essay",
-    name: "Dissertativa",
-    detail: "Deixa espaço maior para resposta escrita.",
-    instructions: "Responda com desenvolvimento completo e argumentos claros."
+    instructions: "1. Transcreva para a Folha de Respostas a opção que julgar correta em cada questão, preenchendo o campo correspondente com caneta de **tinta preta ou azul**.\n2. Nesta prova, as questões são de múltipla escolha, com cinco alternativas cada uma, sempre na sequência **A, B, C, D e E**, das quais somente uma é correta. \n3. Em hipótese alguma, o aluno poderá sair da sala com qualquer material referente a prova. Só será permitido ao aluno entregar sua prova escrita após 60 (sessenta) minutos do seu início."
   }
 ];
 
 const state = {
   templateId: "standard",
   questions: [],
-  currentQuestion: null
+  currentQuestion: null,
+  currentImageDataUrls: [],
+  editingQuestionIndex: null
 };
 
 const elements = {
@@ -33,18 +23,34 @@ const elements = {
   groupName: document.getElementById("groupName"),
   shiftName: document.getElementById("shiftName"),
   studentName: document.getElementById("studentName"),
-  subjectName: document.getElementById("subjectName"),
   examDate: document.getElementById("examDate"),
   examInstructions: document.getElementById("examInstructions"),
   questionType: document.getElementById("questionType"),
+  questionAlternativesColumns: document.getElementById("questionAlternativesColumns"),
+  questionFontSize: document.getElementById("questionFontSize"),
+  questionImageFile: document.getElementById("questionImageFile"),
+  questionImagePosition: document.getElementById("questionImagePosition"),
+  questionImageScalePercent: document.getElementById("questionImageScalePercent"),
+  questionImageScaleDisplay: document.getElementById("questionImageScaleDisplay"),
+  clearQuestionImage: document.getElementById("clearQuestionImage"),
+  questionImagePreviewWrap: document.getElementById("questionImagePreviewWrap"),
+  questionImagePreview: document.getElementById("questionImagePreview"),
   rawQuestion: document.getElementById("rawQuestion"),
   stemOutput: document.getElementById("stemOutput"),
   alternativesOutput: document.getElementById("alternativesOutput"),
+  toggleInstructionsBold: document.getElementById("toggleInstructionsBold"),
+  toggleInstructionsItalic: document.getElementById("toggleInstructionsItalic"),
+  toggleInstructionsUnderline: document.getElementById("toggleInstructionsUnderline"),
+  toggleStemBold: document.getElementById("toggleStemBold"),
+  toggleStemItalic: document.getElementById("toggleStemItalic"),
+  toggleStemUnderline: document.getElementById("toggleStemUnderline"),
+  sectionSubjectSelect: document.getElementById("sectionSubjectSelect"),
+  sectionSubjectOtherWrap: document.getElementById("sectionSubjectOtherWrap"),
+  sectionSubjectOther: document.getElementById("sectionSubjectOther"),
   parserStatus: document.getElementById("parserStatus"),
   questionCount: document.getElementById("questionCount"),
   previewSchool: document.getElementById("previewSchool"),
   previewTitle: document.getElementById("previewTitle"),
-  previewSubject: document.getElementById("previewSubject"),
   previewDate: document.getElementById("previewDate"),
   previewSeries: document.getElementById("previewSeries"),
   previewGroup: document.getElementById("previewGroup"),
@@ -56,7 +62,9 @@ const elements = {
   organizeQuestion: document.getElementById("organizeQuestion"),
   clearQuestion: document.getElementById("clearQuestion"),
   addQuestion: document.getElementById("addQuestion"),
-  printExam: document.getElementById("printExam")
+  addSubjectBreak: document.getElementById("addSubjectBreak"),
+  printExam: document.getElementById("printExam"),
+  clearExam: document.getElementById("clearExam")
 };
 
 const exampleQuestion = `A leitura crítica ajuda o estudante porque:
@@ -67,6 +75,13 @@ C) substitui o estudo em sala.
 D) elimina a necessidade de escrever.
 E) dispensa a revisão final.`;
 
+const IMAGE_MAX_DIMENSION = 1400;
+const IMAGE_DEFAULT_QUALITY = 0.82;
+
+function getTemplateById(templateId) {
+  return templates.find((template) => template.id === templateId) || templates[0];
+}
+
 function formatDate(value) {
   if (!value) {
     return new Intl.DateTimeFormat("pt-BR").format(new Date());
@@ -74,6 +89,184 @@ function formatDate(value) {
 
   const [year, month, day] = value.split("-");
   return `${day}/${month}/${year}`;
+}
+
+function clampNumber(value, min, max) {
+  return Math.min(max, Math.max(min, value));
+}
+
+function escapeHtml(value) {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
+function renderInlineFormatting(value) {
+  const escaped = escapeHtml(value);
+  return escaped
+    .replace(/__(.+?)__/g, "<u>$1</u>")
+    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+    .replace(/\*(.+?)\*/g, "<em>$1</em>");
+}
+
+function getCurrentImageDataUrls() {
+  return Array.isArray(state.currentImageDataUrls) ? state.currentImageDataUrls : [];
+}
+
+function getQuestionImageScalePercent() {
+  const value = Number(elements.questionImageScalePercent.value);
+  if (!Number.isFinite(value)) {
+    return 100;
+  }
+
+  return clampNumber(value, 10, 300);
+}
+
+function getQuestionFontSize() {
+  const value = Number(elements.questionFontSize.value);
+  if (!Number.isFinite(value)) {
+    return 13;
+  }
+
+  return clampNumber(value, 10, 18);
+}
+
+function setImageScaleUi(scaleValue) {
+  const normalized = clampNumber(Number(scaleValue) || 100, 10, 300);
+  const percent = ((normalized - 10) / 290) * 100;
+  elements.questionImageScalePercent.value = String(normalized);
+  elements.questionImageScaleDisplay.textContent = `${normalized}%`;
+  elements.questionImageScalePercent.style.setProperty("--percent", `${percent}%`);
+}
+
+function getImageDimensionsForPosition(imagePosition, scalePercent) {
+  const isAsideImage =
+    imagePosition === "alternatives-left" || imagePosition === "alternatives-right";
+
+  const baseWidth = isAsideImage ? 460 : 680;
+  const baseHeight = isAsideImage ? 340 : 560;
+  const factor = clampNumber(scalePercent, 10, 300) / 100;
+
+  return {
+    width: Math.round(baseWidth * factor),
+    height: Math.round(baseHeight * factor)
+  };
+}
+
+function getImageStyleAttribute(imagePosition, scalePercent) {
+  const dimensions = getImageDimensionsForPosition(imagePosition, scalePercent);
+  return `style="width: ${dimensions.width}px; max-width: ${dimensions.width}px; max-height: ${dimensions.height}px; height: auto; object-fit: contain;"`;
+}
+
+function renderQuestionImagesMarkup(
+  imageDataUrls,
+  altBase,
+  imageClass = "question-image",
+  scalePercent = 100,
+  imagePosition = "top"
+) {
+  if (!imageDataUrls.length) {
+    return "";
+  }
+
+  const styleAttribute = getImageStyleAttribute(imagePosition, scalePercent);
+
+  return `
+    <div class="question-images-stack">
+      ${imageDataUrls
+        .map(
+          (imageDataUrl, index) => `
+            <img class="${imageClass}" src="${imageDataUrl}" alt="${altBase} ${index + 1}" ${styleAttribute} />
+          `
+        )
+        .join("")}
+    </div>
+  `;
+}
+
+function wrapSelectionInTextarea(textarea, before, after) {
+  const start = textarea.selectionStart ?? 0;
+  const end = textarea.selectionEnd ?? 0;
+  const value = textarea.value;
+  const selectedText = value.slice(start, end);
+
+  if (!selectedText) {
+    const insertion = `${before}${after}`;
+    textarea.value = `${value.slice(0, start)}${insertion}${value.slice(end)}`;
+    const cursor = start + before.length;
+    textarea.setSelectionRange(cursor, cursor);
+    return;
+  }
+
+  const replacement = `${before}${selectedText}${after}`;
+  textarea.value = `${value.slice(0, start)}${replacement}${value.slice(end)}`;
+  textarea.setSelectionRange(start + before.length, start + before.length + selectedText.length);
+}
+function readFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result !== "string") {
+        reject(new Error("Falha ao ler imagem"));
+        return;
+      }
+
+      resolve(reader.result);
+    };
+    reader.onerror = () => {
+      reject(new Error("Falha ao ler imagem"));
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function loadImage(dataUrl) {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error("Falha ao carregar imagem"));
+    image.src = dataUrl;
+  });
+}
+
+async function compressImageFile(file) {
+  const sourceDataUrl = await readFileAsDataUrl(file);
+  const image = await loadImage(sourceDataUrl);
+
+  const originalWidth = image.naturalWidth || image.width;
+  const originalHeight = image.naturalHeight || image.height;
+  if (!originalWidth || !originalHeight) {
+    return sourceDataUrl;
+  }
+
+  const scale = Math.min(
+    1,
+    IMAGE_MAX_DIMENSION / originalWidth,
+    IMAGE_MAX_DIMENSION / originalHeight
+  );
+  const targetWidth = Math.max(1, Math.round(originalWidth * scale));
+  const targetHeight = Math.max(1, Math.round(originalHeight * scale));
+
+  const canvas = document.createElement("canvas");
+  canvas.width = targetWidth;
+  canvas.height = targetHeight;
+
+  const context = canvas.getContext("2d");
+  if (!context) {
+    return sourceDataUrl;
+  }
+
+  context.drawImage(image, 0, 0, targetWidth, targetHeight);
+
+  const mimeType = file.type === "image/png" ? "image/png" : "image/jpeg";
+  const compressedDataUrl = canvas.toDataURL(mimeType, IMAGE_DEFAULT_QUALITY);
+
+  return compressedDataUrl.length < sourceDataUrl.length
+    ? compressedDataUrl
+    : sourceDataUrl;
 }
 
 function parseQuestion(rawText, type) {
@@ -87,7 +280,7 @@ function parseQuestion(rawText, type) {
   }
 
   if (type === "essay") {
-    return { stem: lines.join(" "), alternatives: [] };
+    return { stem: lines.join("\n"), alternatives: [] };
   }
 
   const alternativePattern = /^(?:[-*•]\s*)?([A-Ea-e]|[1-5])(?:[\).:-]|\s+)?\s*(.+)$/;
@@ -98,7 +291,7 @@ function parseQuestion(rawText, type) {
     const match = line.match(alternativePattern);
     if (match) {
       alternatives.push({
-        label: match[1].toUpperCase(),
+        label: match[1].toLowerCase(),
         text: match[2].trim()
       });
       continue;
@@ -109,13 +302,13 @@ function parseQuestion(rawText, type) {
 
   if (!alternatives.length) {
     return {
-      stem: lines.join(" "),
+      stem: lines.join("\n"),
       alternatives: []
     };
   }
 
   return {
-    stem: stemLines.join(" "),
+    stem: stemLines.join("\n"),
     alternatives
   };
 }
@@ -125,7 +318,7 @@ function getPreviewPayload() {
 
   return {
     school: elements.schoolName.value.trim() || "CEON - COLÉGIO ESTADUAL OURO NEGRO",
-    title: elements.examTitle.value.trim() || "Avaliação Bimestral",
+    title: elements.examTitle.value.trim() || "SIMULADO DA X UNIDADE - XXXXX",
     date: elements.examDate.value ? dateValue : "_____/_____/_____",
     series: elements.seriesName.value.trim() || "1ª",
     group: elements.groupName.value.trim() || "______",
@@ -133,7 +326,6 @@ function getPreviewPayload() {
     student:
       elements.studentName.value.trim() ||
       "_____________________________________________________",
-    subject: elements.subjectName.value.trim() || "-",
     instructions: elements.examInstructions.value.trim(),
     type: elements.questionType.value
   };
@@ -165,17 +357,21 @@ function renderTemplates() {
 
 function renderPreview() {
   const payload = getPreviewPayload();
+  const questionOnlyCount = state.questions.filter(
+    (item) => item.kind !== "subject-break"
+  ).length;
 
   elements.previewSchool.textContent = payload.school;
   elements.previewTitle.textContent = payload.title;
-  elements.previewSubject.textContent = `Disciplina: ${payload.subject}`;
   elements.previewDate.textContent = payload.date;
   elements.previewSeries.textContent = payload.series;
   elements.previewGroup.textContent = payload.group;
   elements.previewShift.textContent = payload.shift;
   elements.previewStudent.textContent = payload.student;
-  elements.previewInstructions.textContent = payload.instructions;
-  elements.questionCount.textContent = `${state.questions.length} ${state.questions.length === 1 ? "questão" : "questões"}`;
+  elements.previewInstructions.innerHTML = renderInlineFormatting(payload.instructions);
+  elements.questionCount.textContent = `${questionOnlyCount} ${
+    questionOnlyCount === 1 ? "questão" : "questões"
+  }`;
 
   if (!state.questions.length) {
     elements.questionList.innerHTML = `
@@ -186,31 +382,197 @@ function renderPreview() {
     return;
   }
 
+  let questionIndex = 0;
   elements.questionList.innerHTML = state.questions
-    .map((question, index) => {
-      const alternatives = question.alternatives
+    .map((item, index) => {
+      if (item.kind === "subject-break") {
+        return `
+          <article class="subject-break-card">
+            <div class="subject-break-line">
+              <span class="subject-break-name">${item.name}</span>
+              <div class="question-actions">
+                <button class="secondary item-action" data-action="move-up" data-index="${index}" type="button">↑</button>
+                <button class="secondary item-action" data-action="move-down" data-index="${index}" type="button">↓</button>
+              <button class="danger item-action remove-item" data-action="remove" data-index="${index}" type="button">Remover</button>
+              </div>
+            </div>
+          </article>
+        `;
+      }
+
+      questionIndex += 1;
+      const normalizedAlternatives = Array.isArray(item.alternatives)
+        ? item.alternatives
+        : [];
+      const imageDataUrls = Array.isArray(item.imageDataUrls)
+        ? item.imageDataUrls
+        : item.imageDataUrl
+          ? [item.imageDataUrl]
+          : [];
+      const imagePosition = item.imagePosition || "top";
+      const imageScalePercent = clampNumber(Number(item.imageScalePercent) || 100, 10, 300);
+      const questionFontSize = clampNumber(Number(item.fontSize) || 13, 10, 18);
+      const isAlternativesAside =
+        imagePosition === "alternatives-left" ||
+        imagePosition === "alternatives-right";
+      const alternatives = normalizedAlternatives
         .map(
           (alternative) => `
             <div class="alternative">
-              <strong>${alternative.label})</strong>
+              <strong>${String(alternative.label || "").toLowerCase()})</strong>
               <span>${alternative.text}</span>
             </div>
           `
         )
         .join("");
 
-      return `
-        <article class="question-card">
-          <div class="question-title">
-            <span>Questão ${index + 1}</span>
-            <span>${question.typeLabel}</span>
+      const inlineImageMarkup =
+        imageDataUrls.length && !isAlternativesAside
+          ? renderQuestionImagesMarkup(
+              imageDataUrls,
+              `Imagem da questão ${questionIndex}`,
+              "question-image",
+              imageScalePercent,
+              imagePosition
+            )
+          : "";
+      const questionBody = isAlternativesAside
+        ? `
+          <div class="question-body question-body-no-image">
+            <div class="question-body-text">${renderInlineFormatting(item.stem || "[Enunciado pendente]")}</div>
           </div>
-          <div class="question-body">${question.stem || "[Enunciado pendente]"}</div>
-          ${alternatives ? `<div class="alternatives">${alternatives}</div>` : ""}
+        `
+        : `
+          <div class="question-body question-body-${imagePosition}">
+            ${imageDataUrls.length && imagePosition !== "bottom" ? inlineImageMarkup : ""}
+            <div class="question-body-text">${renderInlineFormatting(item.stem || "[Enunciado pendente]")}</div>
+            ${imageDataUrls.length && imagePosition === "bottom" ? inlineImageMarkup : ""}
+          </div>
+        `;
+
+      const alternativesMarkup = alternatives
+        ? `<div class="alternatives ${
+            item.alternativesColumns === 2
+              ? "alternatives-cols-2"
+              : item.alternativesColumns === 3
+                ? "alternatives-cols-3"
+                : item.alternativesColumns === 4
+                  ? "alternatives-cols-4"
+                  : ""
+          }">${alternatives}</div>`
+        : "";
+
+      const alternativesWithImage =
+        isAlternativesAside && imageDataUrls.length && alternativesMarkup
+          ? `
+            <div class="question-alternatives-with-image ${
+              imagePosition === "alternatives-left" ? "image-left" : "image-right"
+            }">
+              ${
+                imagePosition === "alternatives-left"
+                  ? `${renderQuestionImagesMarkup(imageDataUrls, `Imagem da questão ${questionIndex}`, "question-image question-image-aside", imageScalePercent, imagePosition)}${alternativesMarkup}`
+                  : `${alternativesMarkup}${renderQuestionImagesMarkup(imageDataUrls, `Imagem da questão ${questionIndex}`, "question-image question-image-aside", imageScalePercent, imagePosition)}`
+              }
+            </div>
+          `
+          : alternativesMarkup;
+
+      return `
+        <article class="question-card" style="--question-font-size: ${questionFontSize}px;">
+          <div class="question-title">
+            <span>Questão ${questionIndex}</span>
+            <div class="question-actions">
+              <button class="secondary item-action" data-action="move-up" data-index="${index}" type="button">↑</button>
+              <button class="secondary item-action" data-action="move-down" data-index="${index}" type="button">↓</button>
+              <button class="secondary item-action" data-action="edit" data-index="${index}" type="button">Editar</button>
+              <button class="danger item-action remove-item" data-action="remove" data-index="${index}" type="button">Remover</button>
+            </div>
+          </div>
+          ${questionBody}
+          ${alternativesWithImage}
         </article>
       `;
     })
     .join("");
+}
+
+function startEditingQuestion(index) {
+  const item = state.questions[index];
+  if (!item || item.kind !== "question") {
+    return;
+  }
+
+  const normalizedAlternatives = Array.isArray(item.alternatives) ? item.alternatives : [];
+  const imageDataUrls = Array.isArray(item.imageDataUrls)
+    ? item.imageDataUrls
+    : item.imageDataUrl
+      ? [item.imageDataUrl]
+      : [];
+
+  const questionType = item.type || (normalizedAlternatives.length ? "multiple" : "essay");
+  elements.questionType.value = questionType;
+  elements.stemOutput.value = item.stem || "";
+  elements.alternativesOutput.value = normalizedAlternatives
+    .map((alternative, altIndex) => {
+      const fallbackLabel = String.fromCharCode(97 + altIndex);
+      const label = String(alternative.label || fallbackLabel).toLowerCase();
+      return `${label}) ${alternative.text || ""}`.trim();
+    })
+    .join("\n");
+  elements.rawQuestion.value = [
+    elements.stemOutput.value,
+    elements.alternativesOutput.value
+  ]
+    .filter(Boolean)
+    .join("\n\n");
+  elements.questionAlternativesColumns.value = String(Number(item.alternativesColumns) || 1);
+  elements.questionFontSize.value = String(clampNumber(Number(item.fontSize) || 13, 10, 18));
+  elements.questionImagePosition.value = item.imagePosition || "top";
+  setImageScaleUi(item.imageScalePercent);
+  state.currentImageDataUrls = [...imageDataUrls];
+  state.currentQuestion = {
+    stem: item.stem || "",
+    alternatives: normalizedAlternatives,
+    type: questionType,
+    typeLabel:
+      item.typeLabel ||
+      elements.questionType.options[elements.questionType.selectedIndex].textContent
+  };
+  state.editingQuestionIndex = index;
+  elements.addQuestion.textContent = "Salvar edição";
+  elements.parserStatus.textContent = "Editando questão. Ajuste e clique em Salvar edição";
+  updateQuestionImagePreview();
+}
+
+function swapItems(firstIndex, secondIndex) {
+  const first = state.questions[firstIndex];
+  const second = state.questions[secondIndex];
+  state.questions[firstIndex] = second;
+  state.questions[secondIndex] = first;
+
+  if (state.editingQuestionIndex === firstIndex) {
+    state.editingQuestionIndex = secondIndex;
+  } else if (state.editingQuestionIndex === secondIndex) {
+    state.editingQuestionIndex = firstIndex;
+  }
+}
+
+function moveItem(index, direction) {
+  const targetIndex = direction === "up" ? index - 1 : index + 1;
+  if (
+    !Number.isInteger(index) ||
+    index < 0 ||
+    index >= state.questions.length ||
+    targetIndex < 0 ||
+    targetIndex >= state.questions.length
+  ) {
+    return;
+  }
+
+  swapItems(index, targetIndex);
+  elements.parserStatus.textContent = "Item movido";
+  renderPreview();
+  persistToStorage();
 }
 
 function organizeCurrentQuestion() {
@@ -239,42 +601,168 @@ function organizeCurrentQuestion() {
 }
 
 function addCurrentQuestion() {
-  if (!state.currentQuestion) {
+  const manualStem = elements.stemOutput.value.trim();
+  const manualAlternativesText = elements.alternativesOutput.value.trim();
+
+  // Só tenta organizar se ambos os campos estiverem vazios
+  if (!manualStem && !manualAlternativesText && !state.currentQuestion) {
     organizeCurrentQuestion();
   }
 
-  if (!state.currentQuestion || !state.currentQuestion.stem) {
+  const fallbackStem = state.currentQuestion?.stem?.trim() ?? "";
+  const finalStem = manualStem || fallbackStem;
+  const alternatives = elements.alternativesOutput.value
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const match = line.match(/^([A-Ea-e])(?:[\).:-]|\s+)?\s*(.+)$/);
+      if (!match) {
+        return { label: "", text: line };
+      }
+
+      return { label: match[1].toLowerCase(), text: match[2].trim() };
+    });
+
+  if (!finalStem && !alternatives.length) {
     elements.parserStatus.textContent = "Nada para adicionar ainda";
     return;
   }
 
   state.questions.push({
-    stem: elements.stemOutput.value.trim() || state.currentQuestion.stem,
-    alternatives: elements.alternativesOutput.value
-      .split(/\r?\n/)
-      .map((line) => line.trim())
-      .filter(Boolean)
-      .map((line) => {
-        const match = line.match(/^([A-Ea-e])(?:[\).:-]|\s+)?\s*(.+)$/);
-        if (!match) {
-          return { label: "", text: line };
-        }
-
-        return { label: match[1].toUpperCase(), text: match[2].trim() };
-      }),
-    typeLabel: state.currentQuestion.typeLabel
+    kind: "question",
+    type: state.currentQuestion?.type ?? elements.questionType.value,
+    stem: finalStem,
+    alternatives,
+    alternativesColumns: Number(elements.questionAlternativesColumns.value) || 1,
+    fontSize: getQuestionFontSize(),
+    imageDataUrls: [...getCurrentImageDataUrls()],
+    imagePosition: elements.questionImagePosition.value || "top",
+    imageScalePercent: getQuestionImageScalePercent(),
+    typeLabel:
+      state.currentQuestion?.typeLabel ??
+      elements.questionType.options[elements.questionType.selectedIndex].textContent
   });
 
-  elements.parserStatus.textContent = "Questão adicionada à prova";
+  if (
+    Number.isInteger(state.editingQuestionIndex) &&
+    state.editingQuestionIndex >= 0 &&
+    state.editingQuestionIndex < state.questions.length - 1
+  ) {
+    const updatedQuestion = state.questions.pop();
+    state.questions[state.editingQuestionIndex] = updatedQuestion;
+    elements.parserStatus.textContent = "Questão atualizada na prova";
+  } else {
+    elements.parserStatus.textContent = "Questão adicionada à prova";
+  }
+
+  state.editingQuestionIndex = null;
+  elements.addQuestion.textContent = "Adicionar à prova";
   renderPreview();
+}
+
+function addSubjectBreak() {
+  const selected = elements.sectionSubjectSelect.value;
+  const manualName = elements.sectionSubjectOther.value.trim();
+  const subjectName = selected === "OUTRO" ? manualName : elements.sectionSubjectSelect.options[elements.sectionSubjectSelect.selectedIndex].textContent;
+
+  if (!subjectName) {
+    elements.parserStatus.textContent = "Digite o nome da disciplina para inserir";
+    return;
+  }
+
+  state.questions.push({
+    kind: "subject-break",
+    name: subjectName
+  });
+
+  if (selected === "OUTRO") {
+    elements.sectionSubjectOther.value = "";
+  }
+  elements.parserStatus.textContent = "Disciplina inserida na prova";
+  renderPreview();
+}
+
+function updateSubjectInputMode() {
+  const isOther = elements.sectionSubjectSelect.value === "OUTRO";
+  elements.sectionSubjectOtherWrap.classList.toggle("hidden-field", !isOther);
 }
 
 function clearQuestionEditor() {
   elements.rawQuestion.value = "";
   elements.stemOutput.value = "";
   elements.alternativesOutput.value = "";
+  elements.questionImageFile.value = "";
+  elements.questionImagePosition.value = "top";
+  setImageScaleUi(100);
+  elements.questionFontSize.value = "13";
   state.currentQuestion = null;
+  state.currentImageDataUrls = [];
+  state.editingQuestionIndex = null;
+  elements.addQuestion.textContent = "Adicionar à prova";
+  updateQuestionImagePreview();
   elements.parserStatus.textContent = "Pronto para organizar";
+}
+
+function updateQuestionImagePreview() {
+  const imageDataUrls = getCurrentImageDataUrls();
+  const hasImage = imageDataUrls.length > 0;
+  elements.questionImagePreviewWrap.classList.toggle("hidden-field", !hasImage);
+  elements.questionImagePreview.innerHTML = hasImage
+    ? renderQuestionImagesMarkup(
+        imageDataUrls,
+        "Prévia da imagem",
+        "",
+        getQuestionImageScalePercent(),
+        elements.questionImagePosition.value || "top"
+      )
+    : "";
+}
+
+async function onQuestionImageSelected(filesInput) {
+  const files = Array.isArray(filesInput)
+    ? filesInput
+    : filesInput
+      ? [filesInput]
+      : [];
+  if (!files.length) {
+    state.currentImageDataUrls = [];
+    updateQuestionImagePreview();
+    return;
+  }
+
+  if (!files[0].type.startsWith("image/")) {
+    elements.parserStatus.textContent = "Selecione um arquivo de imagem valido";
+    elements.questionImageFile.value = "";
+    state.currentImageDataUrls = [];
+    updateQuestionImagePreview();
+    return;
+  }
+
+  elements.parserStatus.textContent = "Processando imagem...";
+
+  try {
+    const imageDataUrls = [];
+    for (const imageFile of files) {
+      if (!imageFile.type.startsWith("image/")) {
+        continue;
+      }
+
+      imageDataUrls.push(await compressImageFile(imageFile));
+    }
+
+    state.currentImageDataUrls = imageDataUrls;
+    elements.parserStatus.textContent = imageDataUrls.length
+      ? `Imagem${imageDataUrls.length > 1 ? "s" : ""} carregada${
+          imageDataUrls.length > 1 ? "s" : ""
+        } e otimizada${imageDataUrls.length > 1 ? "s" : ""} para esta questão`
+      : "Falha ao carregar imagem";
+  } catch {
+    state.currentImageDataUrls = [];
+    elements.parserStatus.textContent = "Falha ao processar imagem";
+  }
+
+  updateQuestionImagePreview();
 }
 
 function loadExample() {
@@ -291,7 +779,6 @@ function bindLivePreview() {
     elements.groupName,
     elements.shiftName,
     elements.studentName,
-    elements.subjectName,
     elements.examDate,
     elements.examInstructions
   ];
@@ -305,9 +792,50 @@ function bindLivePreview() {
   });
 }
 
+function bindFormattingButtons() {
+  elements.toggleStemBold.addEventListener("click", () => {
+    wrapSelectionInTextarea(elements.stemOutput, "**", "**");
+    elements.stemOutput.dispatchEvent(new Event("input", { bubbles: true }));
+    persistToStorage();
+  });
+
+  elements.toggleStemItalic.addEventListener("click", () => {
+    wrapSelectionInTextarea(elements.stemOutput, "*", "*");
+    elements.stemOutput.dispatchEvent(new Event("input", { bubbles: true }));
+    persistToStorage();
+  });
+
+  elements.toggleStemUnderline.addEventListener("click", () => {
+    wrapSelectionInTextarea(elements.stemOutput, "__", "__");
+    elements.stemOutput.dispatchEvent(new Event("input", { bubbles: true }));
+    persistToStorage();
+  });
+
+  elements.toggleInstructionsBold.addEventListener("click", () => {
+    wrapSelectionInTextarea(elements.examInstructions, "**", "**");
+    elements.examInstructions.dispatchEvent(new Event("input", { bubbles: true }));
+    persistToStorage();
+  });
+
+  elements.toggleInstructionsItalic.addEventListener("click", () => {
+    wrapSelectionInTextarea(elements.examInstructions, "*", "*");
+    elements.examInstructions.dispatchEvent(new Event("input", { bubbles: true }));
+    persistToStorage();
+  });
+
+  elements.toggleInstructionsUnderline.addEventListener("click", () => {
+    wrapSelectionInTextarea(elements.examInstructions, "__", "__");
+    elements.examInstructions.dispatchEvent(new Event("input", { bubbles: true }));
+    persistToStorage();
+  });
+}
+
 function hydrateFromStorage() {
   const saved = localStorage.getItem("prova-facil-mvp");
+  const defaultTemplate = getTemplateById("standard");
   if (!saved) {
+    state.templateId = defaultTemplate.id;
+    elements.examInstructions.value = defaultTemplate.instructions;
     elements.examDate.valueAsDate = new Date();
     return;
   }
@@ -320,12 +848,34 @@ function hydrateFromStorage() {
     elements.groupName.value = data.groupName ?? elements.groupName.value;
     elements.shiftName.value = data.shiftName ?? elements.shiftName.value;
     elements.studentName.value = data.studentName ?? elements.studentName.value;
-    elements.subjectName.value = data.subjectName ?? elements.subjectName.value;
     elements.examDate.value = data.examDate ?? elements.examDate.value;
     elements.examInstructions.value = data.examInstructions ?? elements.examInstructions.value;
-    state.templateId = data.templateId ?? state.templateId;
-    state.questions = Array.isArray(data.questions) ? data.questions : [];
+    elements.rawQuestion.value = data.rawQuestion ?? "";
+    elements.stemOutput.value = data.stemOutput ?? "";
+    elements.alternativesOutput.value = data.alternativesOutput ?? "";
+    state.templateId = getTemplateById(data.templateId ?? defaultTemplate.id).id;
+    if (!elements.examInstructions.value.trim()) {
+      elements.examInstructions.value = getTemplateById(state.templateId).instructions;
+    }
+    state.questions = Array.isArray(data.questions)
+      ? data.questions.map((item) => ({
+          kind: "question",
+          type: "multiple",
+          alternativesColumns: 1,
+          fontSize: 13,
+          imageDataUrls: Array.isArray(item.imageDataUrls)
+            ? item.imageDataUrls
+            : item.imageDataUrl
+              ? [item.imageDataUrl]
+              : [],
+          imagePosition: "top",
+          imageScalePercent: 100,
+          ...item
+        }))
+      : [];
   } catch {
+    state.templateId = defaultTemplate.id;
+    elements.examInstructions.value = defaultTemplate.instructions;
     elements.examDate.valueAsDate = new Date();
   }
 }
@@ -338,14 +888,20 @@ function persistToStorage() {
     groupName: elements.groupName.value,
     shiftName: elements.shiftName.value,
     studentName: elements.studentName.value,
-    subjectName: elements.subjectName.value,
     examDate: elements.examDate.value,
     examInstructions: elements.examInstructions.value,
+    rawQuestion: elements.rawQuestion.value,
+    stemOutput: elements.stemOutput.value,
+    alternativesOutput: elements.alternativesOutput.value,
     templateId: state.templateId,
     questions: state.questions
   };
 
-  localStorage.setItem("prova-facil-mvp", JSON.stringify(data));
+  try {
+    localStorage.setItem("prova-facil-mvp", JSON.stringify(data));
+  } catch {
+    elements.parserStatus.textContent = "Armazenamento cheio. Reduza imagens ou limpe a prova.";
+  }
 }
 
 function wirePersistence() {
@@ -356,7 +912,6 @@ function wirePersistence() {
     elements.groupName,
     elements.shiftName,
     elements.studentName,
-    elements.subjectName,
     elements.examDate,
     elements.examInstructions
   ];
@@ -378,9 +933,50 @@ elements.addQuestion.addEventListener("click", () => {
   persistToStorage();
 });
 
+elements.addSubjectBreak.addEventListener("click", () => {
+  addSubjectBreak();
+  persistToStorage();
+});
+
+elements.sectionSubjectSelect.addEventListener("change", () => {
+  updateSubjectInputMode();
+});
+
 elements.clearQuestion.addEventListener("click", () => {
   clearQuestionEditor();
   persistToStorage();
+});
+
+elements.questionImageFile.addEventListener("change", () => {
+  const files = Array.from(elements.questionImageFile.files ?? []);
+  onQuestionImageSelected(files);
+});
+
+elements.questionImageScalePercent.addEventListener("input", () => {
+  const value = elements.questionImageScalePercent.value;
+  setImageScaleUi(value);
+  if (state.currentImageDataUrls.length) {
+    updateQuestionImagePreview();
+  }
+});
+
+elements.questionImageScalePercent.addEventListener("change", () => {
+  if (state.currentImageDataUrls.length) {
+    updateQuestionImagePreview();
+  }
+});
+
+elements.questionImagePosition.addEventListener("change", () => {
+  if (state.currentImageDataUrls.length) {
+    updateQuestionImagePreview();
+  }
+});
+
+elements.clearQuestionImage.addEventListener("click", () => {
+  elements.questionImageFile.value = "";
+  state.currentImageDataUrls = [];
+  updateQuestionImagePreview();
+  elements.parserStatus.textContent = "Imagens removidas desta questão";
 });
 
 elements.loadExample.addEventListener("click", () => {
@@ -392,10 +988,78 @@ elements.printExam.addEventListener("click", () => {
   window.print();
 });
 
+elements.clearExam.addEventListener("click", () => {
+  if (!state.questions.length) {
+    elements.parserStatus.textContent = "A prova ja esta vazia";
+    return;
+  }
+
+  state.questions = [];
+  elements.parserStatus.textContent = "Todas as questoes foram removidas";
+  renderPreview();
+  persistToStorage();
+});
+
+elements.questionList.addEventListener("click", (event) => {
+  const target = event.target;
+  if (!(target instanceof HTMLElement)) {
+    return;
+  }
+
+  const actionTarget = target.closest("button[data-action]");
+  if (!(actionTarget instanceof HTMLElement)) {
+    return;
+  }
+
+  const action = actionTarget.dataset.action;
+  const index = Number(actionTarget.dataset.index);
+  if (!Number.isInteger(index) || index < 0 || index >= state.questions.length) {
+    return;
+  }
+
+  if (action === "edit") {
+    startEditingQuestion(index);
+    persistToStorage();
+    return;
+  }
+
+  if (action === "move-up") {
+    moveItem(index, "up");
+    return;
+  }
+
+  if (action === "move-down") {
+    moveItem(index, "down");
+    return;
+  }
+
+  if (action !== "remove") {
+    return;
+  }
+
+  state.questions.splice(index, 1);
+  if (state.editingQuestionIndex === index) {
+    clearQuestionEditor();
+  } else if (Number.isInteger(state.editingQuestionIndex) && state.editingQuestionIndex > index) {
+    state.editingQuestionIndex -= 1;
+  }
+
+  elements.parserStatus.textContent = "Item removido da prova";
+  renderPreview();
+  persistToStorage();
+});
+
 hydrateFromStorage();
 renderTemplates();
 bindLivePreview();
+bindFormattingButtons();
 wirePersistence();
+updateSubjectInputMode();
+updateQuestionImagePreview();
+
+// Inicializar o gradiente do slider
+const initialValue = elements.questionImageScalePercent.value || 100;
+setImageScaleUi(initialValue);
 organizeCurrentQuestion();
 renderPreview();
 persistToStorage();
