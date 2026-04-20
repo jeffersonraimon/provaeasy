@@ -349,7 +349,7 @@ label {
   background: white;
   border-radius: 22px;
   padding: 1.3rem;
-  height: min(78vh, 920px);
+  height: min(101vh, 990px);
   border: 1px solid rgba(15, 23, 42, 0.08);
   overflow-y: auto;
   overflow-x: hidden;
@@ -620,7 +620,7 @@ label {
   }
 
   .paper {
-    height: 68vh;
+    height: 72vh;
   }
 
   .question-alternatives-with-image.image-left,
