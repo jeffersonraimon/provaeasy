@@ -221,6 +221,29 @@ label {
   margin-bottom: 1rem;
 }
 
+.question-image-controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  gap: 0.7rem;
+  align-items: end;
+  margin: 0 0 1rem;
+}
+
+.question-image-preview {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 0.45rem;
+  margin-bottom: 1rem;
+  max-width: 280px;
+}
+
+.question-image-preview img {
+  width: 100%;
+  height: auto;
+  display: block;
+  border-radius: 10px;
+}
+
 .hidden-field {
   display: none;
 }
@@ -460,11 +483,70 @@ label {
 }
 
 .question-body {
-  white-space: pre-wrap;
   line-height: 1.55;
 }
 
+.question-body-text {
+  white-space: pre-wrap;
+}
+
+.question-image {
+  max-width: min(260px, 100%);
+  max-height: 260px;
+  border-radius: 12px;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  object-fit: contain;
+  background: #fff;
+}
+
+.question-body-top .question-image,
+.question-body-bottom .question-image {
+  display: block;
+  margin: 0.3rem 0;
+}
+
+.question-body-left .question-image {
+  float: left;
+  margin: 0.15rem 0.9rem 0.45rem 0;
+}
+
+.question-body-right .question-image {
+  float: right;
+  margin: 0.15rem 0 0.45rem 0.9rem;
+}
+
+.question-body::after {
+  content: "";
+  display: table;
+  clear: both;
+}
+
+.question-alternatives-with-image {
+  margin-top: 0.6rem;
+  display: grid;
+  gap: 0.9rem;
+  align-items: start;
+}
+
+.question-alternatives-with-image.image-left {
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
+.question-alternatives-with-image.image-right {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.question-image-aside {
+  width: min(230px, 38vw);
+  max-width: 230px;
+}
+
+.question-alternatives-with-image .alternatives {
+  margin-top: 0;
+}
+
 .alternatives {
+  clear: both;
   margin-top: 0.6rem;
   display: grid;
   gap: 0.35rem;
@@ -518,6 +600,7 @@ label {
   .row-3,
   .row-1,
   .toolbar,
+  .question-image-controls,
   .subject-break-controls,
   .hero-actions,
   .parsed-grid,
@@ -532,6 +615,16 @@ label {
 
   .alternatives.alternatives-cols-2 {
     grid-template-columns: 1fr;
+  }
+
+  .question-alternatives-with-image.image-left,
+  .question-alternatives-with-image.image-right {
+    grid-template-columns: 1fr;
+  }
+
+  .question-image-aside {
+    width: 100%;
+    max-width: 100%;
   }
 }
 
