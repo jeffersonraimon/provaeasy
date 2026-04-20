@@ -1,9 +1,9 @@
-# Como usar o Prova Easy (guia para iniciantes)
+# Como usar o Prova Easy 
 
 Este guia foi feito para quem nao tem experiencia com tecnologia.
 Siga os passos na ordem e voce consegue montar uma prova do zero.
 
-## 1) Abrir o aplicativo
+## 1) Abrir o aplicativo (em caso de baixar o coódigo fonte da aplicação)
 
 1. Abra o arquivo `index.html` no navegador (Chrome, Edge ou Firefox).
 2. Espere a tela principal carregar.
