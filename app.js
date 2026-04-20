@@ -474,11 +474,27 @@ async function compressImageFile(file) {
     : sourceDataUrl;
 }
 
+function stripQuestionHeading(lines) {
+  if (!lines.length) {
+    return lines;
+  }
+
+  const firstLineMatch = lines[0].match(/^quest[ãa]o\s*\d+\s*(?:[-–—:]+\s*(.*))?$/iu);
+  if (firstLineMatch) {
+    const remainder = firstLineMatch[1]?.trim();
+    return remainder ? [remainder, ...lines.slice(1)] : lines.slice(1);
+  }
+
+  return lines;
+}
+
 function parseQuestion(rawText, type) {
-  const lines = rawText
+  const lines = stripQuestionHeading(
+    rawText
     .split(/\r?\n/)
     .map((line) => line.trim())
-    .filter(Boolean);
+    .filter(Boolean)
+  );
 
   if (!lines.length) {
     return { stem: "", alternatives: [] };
