@@ -32,6 +32,7 @@ const elements = {
   questionAlternativesColumns: document.getElementById("questionAlternativesColumns"),
   questionFontSize: document.getElementById("questionFontSize"),
   questionStemAlignment: document.getElementById("questionStemAlignment"),
+  questionStemColumns: document.getElementById("questionStemColumns"),
   questionImageFile: document.getElementById("questionImageFile"),
   questionImagePosition: document.getElementById("questionImagePosition"),
   questionImageScalePercent: document.getElementById("questionImageScalePercent"),
@@ -127,6 +128,51 @@ function renderInlineFormatting(value) {
     .replace(/\[\[\[BLANK_(\d+)\]\]\]/g, (_, index) => blanks[Number(index)]?.value || "");
 }
 
+function renderStemWithColumnMarkers(value, stemColumns = 1) {
+  const source = String(value || "");
+  const markerPattern = /(\/col\/|\/endcol\/)/gi;
+  const parts = source.split(markerPattern);
+
+  if (stemColumns <= 1) {
+    return parts
+      .filter((_, index) => index % 2 === 0)
+      .map((part) => renderInlineFormatting(part))
+      .join("");
+  }
+
+  let html = `<span class="stem-columns-flow stem-cols-${stemColumns}">`;
+  let inColumns = true;
+
+  parts.forEach((part, index) => {
+    if (index % 2 === 1) {
+      const marker = String(part).toLowerCase();
+      if (marker === "/endcol/" && inColumns) {
+        html += "</span>";
+        inColumns = false;
+        return;
+      }
+
+      if (marker === "/col/" && inColumns) {
+        html += '<span class="stem-column-break" aria-hidden="true"></span>';
+      }
+
+      return;
+    }
+
+    if (!part) {
+      return;
+    }
+
+    html += renderInlineFormatting(part);
+  });
+
+  if (inColumns) {
+    html += "</span>";
+  }
+
+  return html;
+}
+
 function getCurrentImageDataUrls() {
   return Array.isArray(state.currentImageDataUrls) ? state.currentImageDataUrls : [];
 }
@@ -134,6 +180,15 @@ function getCurrentImageDataUrls() {
 function getQuestionStemAlignment() {
   const value = elements.questionStemAlignment.value;
   return ["justify", "left", "center", "right"].includes(value) ? value : "justify";
+}
+
+function getQuestionStemColumns() {
+  const value = Number(elements.questionStemColumns.value);
+  if (!Number.isFinite(value)) {
+    return 1;
+  }
+
+  return clampNumber(value, 1, 3);
 }
 
 function normalizeAlternative(alternative, index) {
@@ -158,6 +213,7 @@ function normalizeQuestion(item) {
       alternativesColumns: 1,
       fontSize: 13,
       stemAlignment: "justify",
+      stemColumns: 1,
       imageDataUrls: [],
       imagePosition: "top",
       imageScalePercent: 100,
@@ -191,6 +247,7 @@ function normalizeQuestion(item) {
     stemAlignment: ["justify", "left", "center", "right"].includes(item.stemAlignment)
       ? item.stemAlignment
       : "justify",
+    stemColumns: clampNumber(Number(item.stemColumns) || 1, 1, 3),
     imageDataUrls,
     imagePosition: item.imagePosition || "top",
     imageScalePercent: clampNumber(Number(item.imageScalePercent) || 100, 10, 300),
@@ -220,6 +277,10 @@ function normalizeExamData(data) {
       typeof data?.questionStemAlignment === "string" && ["justify", "left", "center", "right"].includes(data.questionStemAlignment)
         ? data.questionStemAlignment
         : "justify",
+    questionStemColumns:
+      Number.isFinite(Number(data?.questionStemColumns))
+        ? clampNumber(Number(data.questionStemColumns), 1, 3)
+        : 1,
     templateId: getTemplateById(data?.templateId ?? defaultTemplate.id).id,
     questions: Array.isArray(data?.questions) ? data.questions.map(normalizeQuestion) : [],
     currentQuestion:
@@ -230,7 +291,11 @@ function normalizeExamData(data) {
               ? data.currentQuestion.alternatives.map(normalizeAlternative)
               : [],
             type: String(data.currentQuestion.type || "multiple"),
-            typeLabel: String(data.currentQuestion.typeLabel || "")
+            typeLabel: String(data.currentQuestion.typeLabel || ""),
+            stemAlignment: ["justify", "left", "center", "right"].includes(data.currentQuestion.stemAlignment)
+              ? data.currentQuestion.stemAlignment
+              : "justify",
+            stemColumns: clampNumber(Number(data.currentQuestion.stemColumns) || 1, 1, 3)
           }
         : null,
     currentImageDataUrls: Array.isArray(data?.currentImageDataUrls)
@@ -257,6 +322,7 @@ function applyExamData(data) {
   elements.stemOutput.value = normalized.stemOutput;
   elements.alternativesOutput.value = normalized.alternativesOutput;
   elements.questionStemAlignment.value = normalized.questionStemAlignment;
+  elements.questionStemColumns.value = String(normalized.questionStemColumns);
   state.templateId = normalized.templateId;
   state.questions = normalized.questions;
   state.currentQuestion = normalized.currentQuestion;
@@ -288,6 +354,7 @@ function getExamSnapshot() {
     stemOutput: elements.stemOutput.value,
     alternativesOutput: elements.alternativesOutput.value,
     questionStemAlignment: getQuestionStemAlignment(),
+    questionStemColumns: getQuestionStemColumns(),
     templateId: state.templateId,
     questions: state.questions,
     currentQuestion: state.currentQuestion,
@@ -659,6 +726,7 @@ function renderPreview() {
       const stemAlignment = ["justify", "left", "center", "right"].includes(item.stemAlignment)
         ? item.stemAlignment
         : "justify";
+      const stemColumns = clampNumber(Number(item.stemColumns) || 1, 1, 3);
       const questionFontSize = clampNumber(Number(item.fontSize) || 13, 10, 18);
       const isAlternativesAside =
         imagePosition === "alternatives-left" ||
@@ -668,6 +736,7 @@ function renderPreview() {
         imagePosition === "left" ||
         imagePosition === "right" ||
         isAlternativesAside;
+      const showStemInHeader = !usesSideLayout && stemColumns === 1;
       const alternatives = normalizedAlternatives
         .map(
           (alternative) => `
@@ -689,16 +758,18 @@ function renderPreview() {
               imagePosition
             )
           : "";
-      const questionStemMarkup = `<span class="question-stem-inline text-align-${stemAlignment}">${renderInlineFormatting(item.stem || "[Enunciado pendente]")}</span>`;
+      const stemHtml = renderStemWithColumnMarkers(item.stem || "[Enunciado pendente]", stemColumns);
+      const questionStemMarkup = `<span class="question-stem-inline text-align-${stemAlignment}">${stemHtml}</span>`;
       const questionBody = usesSideLayout
         ? `
           <div class="question-body question-body-no-image">
-            <div class="question-body-text text-align-${stemAlignment}">${renderInlineFormatting(item.stem || "[Enunciado pendente]")}</div>
+            <div class="question-body-text text-align-${stemAlignment}">${stemHtml}</div>
           </div>
         `
         : `
           <div class="question-body question-body-${imagePosition}">
               ${hasImages && imagePosition !== "bottom" ? inlineImageMarkup : ""}
+              ${!showStemInHeader ? `<div class="question-body-text text-align-${stemAlignment}">${stemHtml}</div>` : ""}
               ${hasImages && imagePosition === "bottom" ? inlineImageMarkup : ""}
           </div>
         `;
@@ -735,7 +806,7 @@ function renderPreview() {
           <div class="question-title">
             <div class="question-title-main">
               <span class="question-number">Questão ${questionIndex}</span>
-              ${!usesSideLayout ? questionStemMarkup : ""}
+              ${showStemInHeader ? questionStemMarkup : ""}
             </div>
             <div class="question-actions">
               <button class="secondary item-action" data-action="move-up" data-index="${index}" type="button">↑</button>
@@ -786,6 +857,7 @@ function startEditingQuestion(index) {
   elements.questionStemAlignment.value = ["justify", "left", "center", "right"].includes(item.stemAlignment)
     ? item.stemAlignment
     : "justify";
+  elements.questionStemColumns.value = String(clampNumber(Number(item.stemColumns) || 1, 1, 3));
   elements.questionImagePosition.value = item.imagePosition || "top";
   setImageScaleUi(item.imageScalePercent);
   state.currentImageDataUrls = [...imageDataUrls];
@@ -798,7 +870,8 @@ function startEditingQuestion(index) {
       elements.questionType.options[elements.questionType.selectedIndex].textContent,
     stemAlignment: ["justify", "left", "center", "right"].includes(item.stemAlignment)
       ? item.stemAlignment
-      : "justify"
+      : "justify",
+    stemColumns: clampNumber(Number(item.stemColumns) || 1, 1, 3)
   };
   state.editingQuestionIndex = index;
   elements.addQuestion.textContent = "Salvar edição";
@@ -853,7 +926,8 @@ function organizeCurrentQuestion() {
     alternatives: parsed.alternatives,
     type: elements.questionType.value,
     typeLabel: elements.questionType.options[elements.questionType.selectedIndex].textContent,
-    stemAlignment: getQuestionStemAlignment()
+    stemAlignment: getQuestionStemAlignment(),
+    stemColumns: getQuestionStemColumns()
   };
 
   elements.stemOutput.value = parsed.stem;
@@ -900,6 +974,7 @@ function addCurrentQuestion() {
     alternativesColumns: Number(elements.questionAlternativesColumns.value) || 1,
     fontSize: getQuestionFontSize(),
     stemAlignment: getQuestionStemAlignment(),
+    stemColumns: getQuestionStemColumns(),
     imageDataUrls: [...getCurrentImageDataUrls()],
     imagePosition: elements.questionImagePosition.value || "top",
     imageScalePercent: getQuestionImageScalePercent(),
@@ -961,6 +1036,7 @@ function clearQuestionEditor() {
   setImageScaleUi(100);
   elements.questionFontSize.value = "13";
   elements.questionStemAlignment.value = "justify";
+  elements.questionStemColumns.value = "1";
   state.currentQuestion = null;
   state.currentImageDataUrls = [];
   state.editingQuestionIndex = null;

@@ -131,7 +131,7 @@
               <button class="primary" id="addQuestion">Adicionar à prova</button>
             </div>
 
-            <div class="row row-3">
+            <div class="row row-4">
               <label>
                 Colunas desta questão
                 <select id="questionAlternativesColumns">
@@ -162,6 +162,14 @@
                   <option value="left">À esquerda</option>
                   <option value="center">Centralizado</option>
                   <option value="right">À direita</option>
+                </select>
+              </label>
+              <label>
+                Colunas do enunciado
+                <select id="questionStemColumns">
+                  <option value="1" selected>1 coluna</option>
+                  <option value="2">2 colunas</option>
+                  <option value="3">3 colunas</option>
                 </select>
               </label>
             </div>
@@ -231,7 +239,7 @@
                   <button class="format-button" id="toggleStemBold" type="button">B</button>
                   <button class="format-button" id="toggleStemItalic" type="button">I</button>
                   <button class="format-button" id="toggleStemUnderline" type="button">U</button>
-                  <span>Selecione o trecho e clique para formatar</span>
+                  <span>Use /col/ para quebrar coluna e /endcol/ para voltar ao texto normal</span>
                 </div>
                 <textarea id="stemOutput" rows="5"></textarea>
               </label>
