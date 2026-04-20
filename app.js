@@ -719,6 +719,9 @@ function hydrateFromStorage() {
     elements.studentName.value = data.studentName ?? elements.studentName.value;
     elements.examDate.value = data.examDate ?? elements.examDate.value;
     elements.examInstructions.value = data.examInstructions ?? elements.examInstructions.value;
+    elements.rawQuestion.value = data.rawQuestion ?? "";
+    elements.stemOutput.value = data.stemOutput ?? "";
+    elements.alternativesOutput.value = data.alternativesOutput ?? "";
     state.templateId = data.templateId ?? state.templateId;
     state.questions = Array.isArray(data.questions)
       ? data.questions.map((item) => ({
@@ -749,6 +752,9 @@ function persistToStorage() {
     studentName: elements.studentName.value,
     examDate: elements.examDate.value,
     examInstructions: elements.examInstructions.value,
+    rawQuestion: elements.rawQuestion.value,
+    stemOutput: elements.stemOutput.value,
+    alternativesOutput: elements.alternativesOutput.value,
     templateId: state.templateId,
     questions: state.questions
   };
