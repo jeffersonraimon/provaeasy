@@ -703,14 +703,12 @@ label {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   column-gap: 0.75rem;
   row-gap: 0.35rem;
-  font-size: 0.94rem;
 }
 
 .alternatives.alternatives-cols-4 {
   grid-template-columns: repeat(4, minmax(0, 1fr));
   column-gap: 0.65rem;
   row-gap: 0.3rem;
-  font-size: 0.9rem;
 }
 
 .alternatives.alternatives-cols-3 .alternative,
