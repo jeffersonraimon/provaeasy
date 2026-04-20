@@ -3,10 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Prova Fácil MVP - JR</title>
+    <title>Prova Easy</title>
     <meta
       name="description"
-      content="MVP para organizar questões bagunçadas e montar provas padronizadas com templates da escola."
+      content="App para padronizar provas da escola."
     />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -20,10 +20,10 @@
     <div class="app-shell">
       <aside class="sidebar">
         <div class="brand">
-          <span class="brand-mark">PF</span>
+          <span class="brand-mark"></span>
           <div>
-            <p>Prova Fácil - JR</p>
-            <span>MVP de padronização de questões</span>
+            <p>Prova Easy</p>
+            <span>Padronização de caderno de provas. By: @jeffersonraimon</span>
           </div>
         </div>
 
@@ -36,7 +36,7 @@
           <h2>Dados da prova</h2>
           <label>
             Escola
-            <input id="schoolName" type="text" value="CEON - COLÉGIO ESTADUAL OURO NEGRO" />
+            <input id="schoolName" type="text" value="COLÉGIO XXXXXXXXXX" />
           </label>
           <label>
             Título
@@ -66,16 +66,6 @@
               <input id="examDate" type="date" />
             </label>
           </div>
-          <div class="row row-1">
-            <label>
-              Modelo
-              <select id="questionType">
-                <option value="multiple">Múltipla escolha</option>
-                <option value="essay">Dissertativa</option>
-                <option value="truefalse">Verdadeiro / falso</option>
-              </select>
-            </label>
-          </div>
           <label>
             Instruções
             <div class="inline-format-actions">
@@ -92,17 +82,41 @@
       <main class="main-content">
         <header class="hero">
           <div>
-            <p class="eyebrow">Primeira versão funcional</p>
-            <h1>Padronize questões bagunçadas em poucos segundos.</h1>
             <p class="hero-text">
-              Cole o texto bruto, ajuste o resultado e monte a prova com o padrão da escola sem
-              reformatar tudo manualmente.
+              Cole o texto bruto, ajuste e monte a prova.
             </p>
           </div>
           <div class="hero-actions">
             <button class="secondary" id="loadExample">Carregar exemplo</button>
-            <button class="primary" id="printExam">Exportar / Imprimir</button>
+            <a class="secondary" href="./COMO_USAR.md" target="_blank" rel="noopener noreferrer">Como usar</a>
+            <div class="transfer-menu" id="transferMenuWrap">
+              <button
+                class="secondary transfer-trigger"
+                id="transferMenuButton"
+                type="button"
+                aria-haspopup="menu"
+                aria-expanded="false"
+              >
+                Importar/Exportar (JSON)
+              </button>
+              <div class="transfer-menu-panel hidden-field" id="transferMenu" role="menu">
+                <button class="transfer-option" type="button" data-transfer-action="export" data-transfer-mode="full" role="menuitem">
+                  Exportar prova completa (JSON)
+                </button>
+                <button class="transfer-option" type="button" data-transfer-action="export" data-transfer-mode="questions" role="menuitem">
+                  Exportar questões/disciplina (JSON)
+                </button>
+                <button class="transfer-option" type="button" data-transfer-action="import" data-transfer-mode="full" role="menuitem">
+                  Importar prova completa (JSON)
+                </button>
+                <button class="transfer-option" type="button" data-transfer-action="import" data-transfer-mode="questions" role="menuitem">
+                  Importar questões/disciplina (JSON)
+                </button>
+              </div>
+            </div>
+            <button class="primary" id="printExam">Imprimir</button>
           </div>
+          <input id="importExamFile" type="file" accept="application/json" hidden />
         </header>
 
         <section class="workspace">
@@ -130,9 +144,9 @@
               <button class="primary" id="addQuestion">Adicionar à prova</button>
             </div>
 
-            <div class="row">
-              <label>
-                Colunas desta questão
+            <div class="row row-4">
+              <label id="questionAlternativesColumnsWrap">
+                Colunas das alternativas
                 <select id="questionAlternativesColumns">
                   <option value="1">1 coluna</option>
                   <option value="2">2 colunas</option>
@@ -145,14 +159,45 @@
                 <select id="questionFontSize">
                   <option value="10">10 px</option>
                   <option value="11">11 px</option>
-                  <option value="12">12 px</option>
-                  <option value="13" selected>13 px</option>
+                  <option value="12" selected>12 px</option>
+                  <option value="13">13 px</option>
                   <option value="14">14 px</option>
                   <option value="15">15 px</option>
                   <option value="16">16 px</option>
                   <option value="17">17 px</option>
                   <option value="18">18 px</option>
                 </select>
+              </label>
+              <label>
+                Alinhamento do enunciado
+                <select id="questionStemAlignment">
+                  <option value="justify" selected>Justificado</option>
+                  <option value="left">À esquerda</option>
+                  <option value="center">Centralizado</option>
+                  <option value="right">À direita</option>
+                </select>
+              </label>
+              <label>
+                Colunas do enunciado
+                <select id="questionStemColumns">
+                  <option value="1" selected>1 coluna</option>
+                  <option value="2">2 colunas</option>
+                  <option value="3">3 colunas</option>
+                </select>
+              </label>
+            </div>
+
+            <div class="row">
+              <label>
+                Resposta da questão
+                <select id="questionAnswerMode">
+                  <option value="alternatives" selected>Com alternativas</option>
+                  <option value="essay-lines">Dissertativa (linhas)</option>
+                </select>
+              </label>
+              <label id="questionEssayLinesWrap" class="hidden-field">
+                Quantidade de linhas
+                <input id="questionEssayLines" type="number" min="1" max="30" value="8" />
               </label>
             </div>
 
@@ -188,7 +233,7 @@
 
             <div class="subject-break-controls">
               <label>
-                Inserir disciplina no meio da prova
+                Inserir disciplina da prova
                 <select id="sectionSubjectSelect">
                   <option value="LINGUA PORTUGUESA">LÍNGUA PORTUGUESA</option>
                   <option value="REDACAO">REDAÇÃO</option>
@@ -196,10 +241,13 @@
                   <option value="GEOGRAFIA">GEOGRAFIA</option>
                   <option value="HISTORIA">HISTÓRIA</option>
                   <option value="FILOSOFIA">FILOSOFIA</option>
+                  <option value="SOCIOLOGIA">SOCIOLOGIA</option>
+                  <option value="ED. FISICA">ED. FÍSICA</option>
                   <option value="BIOLOGIA">BIOLOGIA</option>
                   <option value="QUIMICA">QUÍMICA</option>
                   <option value="MATEMATICA">MATEMÁTICA</option>
                   <option value="FISICA">FÍSICA</option>
+                  <option value="ARTE">ARTE</option>
                   <option value="OUTRO">Outro:</option>
                 </select>
               </label>
@@ -221,11 +269,11 @@
                   <button class="format-button" id="toggleStemBold" type="button">B</button>
                   <button class="format-button" id="toggleStemItalic" type="button">I</button>
                   <button class="format-button" id="toggleStemUnderline" type="button">U</button>
-                  <span>Selecione o trecho e clique para formatar</span>
+                  <span>Use /col/ para quebrar coluna e /endcol/ para voltar ao texto normal</span>
                 </div>
                 <textarea id="stemOutput" rows="5"></textarea>
               </label>
-              <label>
+              <label id="alternativesOutputWrap">
                 Alternativas
                 <textarea id="alternativesOutput" rows="7"></textarea>
               </label>
@@ -237,6 +285,7 @@
               <div>
                 <h2>Pré-visualização</h2>
                 <p>Veja como a prova vai ficar antes de imprimir.</p>
+                <p>Para remover as informações do App ao imprimir, vá em Mais configurações e desative a opção Cabeçalhos e Rodapé.</p>
               </div>
               <div class="preview-actions">
                 <span class="chip" id="questionCount">0 questões</span>
@@ -246,7 +295,7 @@
 
             <div class="paper" id="examPreview">
               <div class="paper-header">
-                <p class="school" id="previewSchool">CEON - COLÉGIO ESTADUAL OURO NEGRO</p>
+                <p class="school" id="previewSchool">COLÉGIO XXXXXXXXX</p>
               </div>
               <div class="header-lines">
                 <p>

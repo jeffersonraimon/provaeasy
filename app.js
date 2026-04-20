@@ -1,9 +1,9 @@
 const templates = [
   {
     id: "standard",
-    name: "Padrão da escola",
-    detail: "Cabeçalho institucional, margens limpas e questões numeradas.",
-    instructions: "1. Transcreva para a Folha de Respostas a opção que julgar correta em cada questão, preenchendo o campo correspondente com caneta de **tinta preta ou azul**.\n2. Nesta prova, as questões são de múltipla escolha, com cinco alternativas cada uma, sempre na sequência **A, B, C, D e E**, das quais somente uma é correta. \n3. Em hipótese alguma, o aluno poderá sair da sala com qualquer material referente a prova. Só será permitido ao aluno entregar sua prova escrita após 60 (sessenta) minutos do seu início."
+    name: "Padrão",
+    detail: "Cabeçalho institucional e margens limpas.",
+    instructions: "1. Transcreva para a Folha de Respostas a opção que julgar correta em cada questão, preenchendo o campo correspondente com caneta de **tinta preta ou azul**.\n2. Nesta prova, as questões são de múltipla escolha, com cinco alternativas cada uma, sempre na sequência **A, B, C, D e E**, das quais somente uma é correta. \n3. Em hipótese alguma, o aluno poderá sair da sala com qualquer material referente a prova. Só será permitido ao aluno entregar sua prova escrita após **60 (sessenta) minutos** do seu início."
   }
 ];
 
@@ -12,8 +12,16 @@ const state = {
   questions: [],
   currentQuestion: null,
   currentImageDataUrls: [],
-  editingQuestionIndex: null
+  editingQuestionIndex: null,
+  pendingImportTransferMode: "full"
 };
+
+const EXAM_STORAGE_KEY = "prova-easy";
+const EXAM_EXPORT_VERSION = 1;
+const DEFAULT_QUESTION_FONT_SIZE = 12;
+const DEFAULT_QUESTION_ESSAY_LINES = 8;
+const JSON_TRANSFER_MODE_FULL = "full";
+const JSON_TRANSFER_MODE_QUESTIONS = "questions";
 
 const elements = {
   templateList: document.getElementById("templateList"),
@@ -25,9 +33,14 @@ const elements = {
   studentName: document.getElementById("studentName"),
   examDate: document.getElementById("examDate"),
   examInstructions: document.getElementById("examInstructions"),
-  questionType: document.getElementById("questionType"),
+  questionAlternativesColumnsWrap: document.getElementById("questionAlternativesColumnsWrap"),
   questionAlternativesColumns: document.getElementById("questionAlternativesColumns"),
   questionFontSize: document.getElementById("questionFontSize"),
+  questionStemAlignment: document.getElementById("questionStemAlignment"),
+  questionStemColumns: document.getElementById("questionStemColumns"),
+  questionAnswerMode: document.getElementById("questionAnswerMode"),
+  questionEssayLinesWrap: document.getElementById("questionEssayLinesWrap"),
+  questionEssayLines: document.getElementById("questionEssayLines"),
   questionImageFile: document.getElementById("questionImageFile"),
   questionImagePosition: document.getElementById("questionImagePosition"),
   questionImageScalePercent: document.getElementById("questionImageScalePercent"),
@@ -37,6 +50,7 @@ const elements = {
   questionImagePreview: document.getElementById("questionImagePreview"),
   rawQuestion: document.getElementById("rawQuestion"),
   stemOutput: document.getElementById("stemOutput"),
+  alternativesOutputWrap: document.getElementById("alternativesOutputWrap"),
   alternativesOutput: document.getElementById("alternativesOutput"),
   toggleInstructionsBold: document.getElementById("toggleInstructionsBold"),
   toggleInstructionsItalic: document.getElementById("toggleInstructionsItalic"),
@@ -58,7 +72,11 @@ const elements = {
   previewStudent: document.getElementById("previewStudent"),
   previewInstructions: document.getElementById("previewInstructions"),
   questionList: document.getElementById("questionList"),
+  transferMenuWrap: document.getElementById("transferMenuWrap"),
+  transferMenuButton: document.getElementById("transferMenuButton"),
+  transferMenu: document.getElementById("transferMenu"),
   loadExample: document.getElementById("loadExample"),
+  importExamFile: document.getElementById("importExamFile"),
   organizeQuestion: document.getElementById("organizeQuestion"),
   clearQuestion: document.getElementById("clearQuestion"),
   addQuestion: document.getElementById("addQuestion"),
@@ -105,15 +123,402 @@ function escapeHtml(value) {
 }
 
 function renderInlineFormatting(value) {
-  const escaped = escapeHtml(value);
+  const blanks = [];
+  const protectedValue = String(value).replace(/_{3,}/g, (match) => {
+    const token = `[[[BLANK_${blanks.length}]]]`;
+    blanks.push({ token, value: match });
+    return token;
+  });
+
+  const escaped = escapeHtml(protectedValue);
   return escaped
-    .replace(/__(.+?)__/g, "<u>$1</u>")
+    .replace(/__([\s\S]+?)__/g, "<u>$1</u>")
     .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
-    .replace(/\*(.+?)\*/g, "<em>$1</em>");
+    .replace(/\*(.+?)\*/g, "<em>$1</em>")
+    .replace(/\[\[\[BLANK_(\d+)\]\]\]/g, (_, index) => blanks[Number(index)]?.value || "");
+}
+
+function renderStemWithColumnMarkers(value, stemColumns = 1) {
+  const source = String(value || "");
+  const markerPattern = /(\/col\/|\/endcol\/)/gi;
+  const parts = source.split(markerPattern);
+
+  if (stemColumns <= 1) {
+    return parts
+      .filter((_, index) => index % 2 === 0)
+      .map((part) => renderInlineFormatting(part))
+      .join("");
+  }
+
+  let html = `<span class="stem-columns-flow stem-cols-${stemColumns}">`;
+  let inColumns = true;
+
+  parts.forEach((part, index) => {
+    if (index % 2 === 1) {
+      const marker = String(part).toLowerCase();
+      if (marker === "/endcol/" && inColumns) {
+        html += "</span>";
+        inColumns = false;
+        return;
+      }
+
+      if (marker === "/col/" && inColumns) {
+        html += '<span class="stem-column-break" aria-hidden="true"></span>';
+      }
+
+      return;
+    }
+
+    if (!part) {
+      return;
+    }
+
+    html += renderInlineFormatting(part);
+  });
+
+  if (inColumns) {
+    html += "</span>";
+  }
+
+  return html;
 }
 
 function getCurrentImageDataUrls() {
   return Array.isArray(state.currentImageDataUrls) ? state.currentImageDataUrls : [];
+}
+
+function getQuestionStemAlignment() {
+  const value = elements.questionStemAlignment.value;
+  return ["justify", "left", "center", "right"].includes(value) ? value : "justify";
+}
+
+function getQuestionStemColumns() {
+  const value = Number(elements.questionStemColumns.value);
+  if (!Number.isFinite(value)) {
+    return 1;
+  }
+
+  return clampNumber(value, 1, 3);
+}
+
+function getQuestionAnswerMode() {
+  return elements.questionAnswerMode.value === "essay-lines"
+    ? "essay-lines"
+    : "alternatives";
+}
+
+function getQuestionTypeFromAnswerMode(answerMode = getQuestionAnswerMode()) {
+  return answerMode === "essay-lines" ? "essay" : "multiple";
+}
+
+function getQuestionTypeLabel(type = getQuestionTypeFromAnswerMode()) {
+  return type === "essay" ? "Dissertativa" : "Múltipla escolha";
+}
+
+function getQuestionEssayLineCount() {
+  const value = Number(elements.questionEssayLines.value);
+  if (!Number.isFinite(value)) {
+    return DEFAULT_QUESTION_ESSAY_LINES;
+  }
+
+  return clampNumber(value, 1, 30);
+}
+
+function updateQuestionAnswerModeUi() {
+  const isEssay = getQuestionAnswerMode() === "essay-lines";
+  elements.questionEssayLinesWrap.classList.toggle("hidden-field", !isEssay);
+  elements.questionAlternativesColumnsWrap.classList.toggle("hidden-field", isEssay);
+  elements.alternativesOutputWrap.classList.toggle("hidden-field", isEssay);
+  elements.alternativesOutput.disabled = isEssay;
+  elements.questionAlternativesColumns.disabled = isEssay;
+}
+
+function normalizeAlternative(alternative, index) {
+  const fallbackLabel = String.fromCharCode(97 + index);
+  if (!alternative || typeof alternative !== "object") {
+    return { label: fallbackLabel, text: "" };
+  }
+
+  return {
+    label: String(alternative.label || fallbackLabel).toLowerCase(),
+    text: String(alternative.text || "")
+  };
+}
+
+function normalizeQuestion(item) {
+  if (!item || typeof item !== "object") {
+    return {
+      kind: "question",
+      type: "multiple",
+      stem: "",
+      alternatives: [],
+      alternativesColumns: 1,
+      fontSize: DEFAULT_QUESTION_FONT_SIZE,
+      stemAlignment: "justify",
+      stemColumns: 1,
+      answerMode: "alternatives",
+      essayLineCount: DEFAULT_QUESTION_ESSAY_LINES,
+      imageDataUrls: [],
+      imagePosition: "top",
+      imageScalePercent: 100,
+      typeLabel: "Múltipla escolha"
+    };
+  }
+
+  if (item.kind === "subject-break") {
+    return {
+      kind: "subject-break",
+      name: String(item.name || "")
+    };
+  }
+
+  const alternatives = Array.isArray(item.alternatives)
+    ? item.alternatives.map(normalizeAlternative)
+    : [];
+  const imageDataUrls = Array.isArray(item.imageDataUrls)
+    ? item.imageDataUrls.filter((value) => typeof value === "string")
+    : item.imageDataUrl && typeof item.imageDataUrl === "string"
+      ? [item.imageDataUrl]
+      : [];
+
+  return {
+    kind: "question",
+    type: item.type || (alternatives.length ? "multiple" : "essay"),
+    stem: String(item.stem || ""),
+    alternatives,
+    alternativesColumns: Number(item.alternativesColumns) || 1,
+    fontSize: clampNumber(Number(item.fontSize) || DEFAULT_QUESTION_FONT_SIZE, 10, 18),
+    stemAlignment: ["justify", "left", "center", "right"].includes(item.stemAlignment)
+      ? item.stemAlignment
+      : "justify",
+    stemColumns: clampNumber(Number(item.stemColumns) || 1, 1, 3),
+    answerMode:
+      item.answerMode === "essay-lines" || item.type === "essay"
+        ? "essay-lines"
+        : "alternatives",
+    essayLineCount: clampNumber(Number(item.essayLineCount) || DEFAULT_QUESTION_ESSAY_LINES, 1, 30),
+    imageDataUrls,
+    imagePosition: item.imagePosition || "top",
+    imageScalePercent: clampNumber(Number(item.imageScalePercent) || 100, 10, 300),
+    typeLabel: String(item.typeLabel || "")
+  };
+}
+
+function normalizeExamData(data) {
+  const defaultTemplate = getTemplateById(data?.templateId ?? "standard");
+
+  return {
+    version: Number(data?.version) || EXAM_EXPORT_VERSION,
+    schoolName: typeof data?.schoolName === "string" ? data.schoolName : elements.schoolName.value,
+    examTitle: typeof data?.examTitle === "string" ? data.examTitle : elements.examTitle.value,
+    seriesName: typeof data?.seriesName === "string" ? data.seriesName : elements.seriesName.value,
+    groupName: typeof data?.groupName === "string" ? data.groupName : elements.groupName.value,
+    shiftName: typeof data?.shiftName === "string" ? data.shiftName : elements.shiftName.value,
+    studentName: typeof data?.studentName === "string" ? data.studentName : elements.studentName.value,
+    examDate: typeof data?.examDate === "string" ? data.examDate : elements.examDate.value,
+    examInstructions:
+      typeof data?.examInstructions === "string" ? data.examInstructions : elements.examInstructions.value,
+    rawQuestion: typeof data?.rawQuestion === "string" ? data.rawQuestion : elements.rawQuestion.value,
+    stemOutput: typeof data?.stemOutput === "string" ? data.stemOutput : elements.stemOutput.value,
+    alternativesOutput:
+      typeof data?.alternativesOutput === "string" ? data.alternativesOutput : elements.alternativesOutput.value,
+    questionStemAlignment:
+      typeof data?.questionStemAlignment === "string" && ["justify", "left", "center", "right"].includes(data.questionStemAlignment)
+        ? data.questionStemAlignment
+        : "justify",
+    questionStemColumns:
+      Number.isFinite(Number(data?.questionStemColumns))
+        ? clampNumber(Number(data.questionStemColumns), 1, 3)
+        : 1,
+    questionAnswerMode:
+      data?.questionAnswerMode === "essay-lines" ? "essay-lines" : "alternatives",
+    questionEssayLineCount:
+      Number.isFinite(Number(data?.questionEssayLineCount))
+        ? clampNumber(Number(data.questionEssayLineCount), 1, 30)
+        : DEFAULT_QUESTION_ESSAY_LINES,
+    templateId: getTemplateById(data?.templateId ?? defaultTemplate.id).id,
+    questions: Array.isArray(data?.questions) ? data.questions.map(normalizeQuestion) : [],
+    currentQuestion:
+      data?.currentQuestion && typeof data.currentQuestion === "object"
+        ? {
+            stem: String(data.currentQuestion.stem || ""),
+            alternatives: Array.isArray(data.currentQuestion.alternatives)
+              ? data.currentQuestion.alternatives.map(normalizeAlternative)
+              : [],
+            type: String(data.currentQuestion.type || "multiple"),
+            typeLabel: String(data.currentQuestion.typeLabel || ""),
+            stemAlignment: ["justify", "left", "center", "right"].includes(data.currentQuestion.stemAlignment)
+              ? data.currentQuestion.stemAlignment
+              : "justify",
+            stemColumns: clampNumber(Number(data.currentQuestion.stemColumns) || 1, 1, 3),
+            answerMode:
+              data.currentQuestion.answerMode === "essay-lines" ? "essay-lines" : "alternatives",
+            essayLineCount: clampNumber(
+              Number(data.currentQuestion.essayLineCount) || DEFAULT_QUESTION_ESSAY_LINES,
+              1,
+              30
+            )
+          }
+        : null,
+    currentImageDataUrls: Array.isArray(data?.currentImageDataUrls)
+      ? data.currentImageDataUrls.filter((value) => typeof value === "string")
+      : [],
+    editingQuestionIndex: Number.isInteger(data?.editingQuestionIndex)
+      ? data.editingQuestionIndex
+      : null
+  };
+}
+
+function applyExamData(data) {
+  const normalized = normalizeExamData(data);
+
+  elements.schoolName.value = normalized.schoolName;
+  elements.examTitle.value = normalized.examTitle;
+  elements.seriesName.value = normalized.seriesName;
+  elements.groupName.value = normalized.groupName;
+  elements.shiftName.value = normalized.shiftName;
+  elements.studentName.value = normalized.studentName;
+  elements.examDate.value = normalized.examDate;
+  elements.examInstructions.value = normalized.examInstructions;
+  elements.rawQuestion.value = normalized.rawQuestion;
+  elements.stemOutput.value = normalized.stemOutput;
+  elements.alternativesOutput.value = normalized.alternativesOutput;
+  elements.questionStemAlignment.value = normalized.questionStemAlignment;
+  elements.questionStemColumns.value = String(normalized.questionStemColumns);
+  elements.questionAnswerMode.value = normalized.questionAnswerMode;
+  elements.questionEssayLines.value = String(normalized.questionEssayLineCount);
+  state.templateId = normalized.templateId;
+  state.questions = normalized.questions;
+  state.currentQuestion = normalized.currentQuestion;
+  state.currentImageDataUrls = normalized.currentImageDataUrls;
+  state.editingQuestionIndex = normalized.editingQuestionIndex;
+
+  if (!elements.examInstructions.value.trim()) {
+    elements.examInstructions.value = getTemplateById(state.templateId).instructions;
+  }
+
+  renderTemplates();
+  updateQuestionAnswerModeUi();
+  updateSubjectInputMode();
+  updateQuestionImagePreview();
+  renderPreview();
+}
+
+function getExamSnapshot() {
+  return {
+    version: EXAM_EXPORT_VERSION,
+    schoolName: elements.schoolName.value,
+    examTitle: elements.examTitle.value,
+    seriesName: elements.seriesName.value,
+    groupName: elements.groupName.value,
+    shiftName: elements.shiftName.value,
+    studentName: elements.studentName.value,
+    examDate: elements.examDate.value,
+    examInstructions: elements.examInstructions.value,
+    rawQuestion: elements.rawQuestion.value,
+    stemOutput: elements.stemOutput.value,
+    alternativesOutput: elements.alternativesOutput.value,
+    questionStemAlignment: getQuestionStemAlignment(),
+    questionStemColumns: getQuestionStemColumns(),
+    questionAnswerMode: getQuestionAnswerMode(),
+    questionEssayLineCount: getQuestionEssayLineCount(),
+    templateId: state.templateId,
+    questions: state.questions,
+    currentQuestion: state.currentQuestion,
+    currentImageDataUrls: getCurrentImageDataUrls(),
+    editingQuestionIndex: state.editingQuestionIndex
+  };
+}
+
+function downloadTextFile(content, fileName, mimeType) {
+  const blob = new Blob([content], { type: mimeType });
+  const objectUrl = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+
+  link.href = objectUrl;
+  link.download = fileName;
+  link.click();
+
+  setTimeout(() => URL.revokeObjectURL(objectUrl), 0);
+}
+
+function buildExamFileName() {
+  const title = elements.examTitle.value.trim() || "prova";
+  const safeTitle = title
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .toLowerCase();
+  const datePart = elements.examDate.value || new Date().toISOString().slice(0, 10);
+
+  return `${safeTitle || "prova"}-${datePart}.json`;
+}
+
+function buildQuestionsOnlySnapshot() {
+  return {
+    version: EXAM_EXPORT_VERSION,
+    exportScope: JSON_TRANSFER_MODE_QUESTIONS,
+    questions: state.questions
+  };
+}
+
+function importQuestionsOnly(data) {
+  state.questions = Array.isArray(data?.questions)
+    ? data.questions.map(normalizeQuestion)
+    : [];
+  state.currentQuestion = null;
+  state.editingQuestionIndex = null;
+  elements.addQuestion.textContent = "Adicionar à prova";
+  renderPreview();
+}
+
+function normalizeTransferMode(mode) {
+  return mode === JSON_TRANSFER_MODE_QUESTIONS
+    ? JSON_TRANSFER_MODE_QUESTIONS
+    : JSON_TRANSFER_MODE_FULL;
+}
+
+function exportExam(transferMode = JSON_TRANSFER_MODE_FULL) {
+  const safeTransferMode = normalizeTransferMode(transferMode);
+  const snapshot = safeTransferMode === JSON_TRANSFER_MODE_QUESTIONS
+    ? buildQuestionsOnlySnapshot()
+    : getExamSnapshot();
+  const fileName = safeTransferMode === JSON_TRANSFER_MODE_QUESTIONS
+    ? buildExamFileName().replace(/\.json$/, "-questoes.json")
+    : buildExamFileName();
+
+  downloadTextFile(JSON.stringify(snapshot, null, 2), fileName, "application/json");
+  elements.parserStatus.textContent = safeTransferMode === JSON_TRANSFER_MODE_QUESTIONS
+    ? "Questões e disciplinas exportadas em JSON"
+    : "Prova completa exportada em JSON";
+}
+
+async function importExamFile(file, transferMode = JSON_TRANSFER_MODE_FULL) {
+  if (!file) {
+    return;
+  }
+
+  try {
+    const safeTransferMode = normalizeTransferMode(transferMode);
+    const text = await file.text();
+    const data = JSON.parse(text);
+
+    if (safeTransferMode === JSON_TRANSFER_MODE_QUESTIONS) {
+      importQuestionsOnly(data);
+      elements.parserStatus.textContent = "Questões e disciplinas importadas com sucesso";
+    } else {
+      applyExamData(data);
+      elements.parserStatus.textContent = "Prova completa importada com sucesso";
+    }
+
+    persistToStorage();
+  } catch {
+    elements.parserStatus.textContent = "Não foi possível importar este arquivo JSON";
+  } finally {
+    state.pendingImportTransferMode = JSON_TRANSFER_MODE_FULL;
+    elements.importExamFile.value = "";
+  }
 }
 
 function getQuestionImageScalePercent() {
@@ -128,10 +533,92 @@ function getQuestionImageScalePercent() {
 function getQuestionFontSize() {
   const value = Number(elements.questionFontSize.value);
   if (!Number.isFinite(value)) {
-    return 13;
+    return DEFAULT_QUESTION_FONT_SIZE;
   }
 
   return clampNumber(value, 10, 18);
+}
+
+function closeTransferMenu() {
+  if (!elements.transferMenu || !elements.transferMenuButton) {
+    return;
+  }
+
+  elements.transferMenu.classList.add("hidden-field");
+  elements.transferMenuButton.setAttribute("aria-expanded", "false");
+}
+
+function openTransferMenu() {
+  if (!elements.transferMenu || !elements.transferMenuButton) {
+    return;
+  }
+
+  elements.transferMenu.classList.remove("hidden-field");
+  elements.transferMenuButton.setAttribute("aria-expanded", "true");
+}
+
+function toggleTransferMenu() {
+  if (!elements.transferMenu) {
+    return;
+  }
+
+  const isOpen = !elements.transferMenu.classList.contains("hidden-field");
+  if (isOpen) {
+    closeTransferMenu();
+    return;
+  }
+
+  openTransferMenu();
+}
+
+function bindTransferMenu() {
+  if (!elements.transferMenu || !elements.transferMenuWrap || !elements.transferMenuButton) {
+    return;
+  }
+
+  const optionButtons = Array.from(
+    elements.transferMenu.querySelectorAll("button[data-transfer-action][data-transfer-mode]")
+  );
+
+  elements.transferMenuButton.addEventListener("click", (event) => {
+    event.stopPropagation();
+    toggleTransferMenu();
+  });
+
+  optionButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      const transferAction = String(button.dataset.transferAction || "");
+      const transferMode = normalizeTransferMode(button.dataset.transferMode);
+      closeTransferMenu();
+
+      if (transferAction === "export") {
+        exportExam(transferMode);
+        return;
+      }
+
+      if (transferAction === "import") {
+        state.pendingImportTransferMode = transferMode;
+        elements.importExamFile.value = "";
+        elements.importExamFile.click();
+      }
+    });
+  });
+
+  document.addEventListener("click", (event) => {
+    if (!(event.target instanceof Node)) {
+      return;
+    }
+
+    if (!elements.transferMenuWrap.contains(event.target)) {
+      closeTransferMenu();
+    }
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      closeTransferMenu();
+    }
+  });
 }
 
 function setImageScaleUi(scaleValue) {
@@ -269,11 +756,27 @@ async function compressImageFile(file) {
     : sourceDataUrl;
 }
 
+function stripQuestionHeading(lines) {
+  if (!lines.length) {
+    return lines;
+  }
+
+  const firstLineMatch = lines[0].match(/^quest[ãa]o\s*\d+\s*(?:[-–—:]+\s*(.*))?$/iu);
+  if (firstLineMatch) {
+    const remainder = firstLineMatch[1]?.trim();
+    return remainder ? [remainder, ...lines.slice(1)] : lines.slice(1);
+  }
+
+  return lines;
+}
+
 function parseQuestion(rawText, type) {
-  const lines = rawText
+  const lines = stripQuestionHeading(
+    rawText
     .split(/\r?\n/)
     .map((line) => line.trim())
-    .filter(Boolean);
+    .filter(Boolean)
+  );
 
   if (!lines.length) {
     return { stem: "", alternatives: [] };
@@ -283,7 +786,7 @@ function parseQuestion(rawText, type) {
     return { stem: lines.join("\n"), alternatives: [] };
   }
 
-  const alternativePattern = /^(?:[-*•]\s*)?([A-Ea-e]|[1-5])(?:[\).:-]|\s+)?\s*(.+)$/;
+  const alternativePattern = /^(?:[-*•]\s*)?([A-Ea-e]|[1-5])\s*[\).:-]\s*(.+)$/;
   const alternatives = [];
   const stemLines = [];
 
@@ -317,7 +820,7 @@ function getPreviewPayload() {
   const dateValue = formatDate(elements.examDate.value);
 
   return {
-    school: elements.schoolName.value.trim() || "CEON - COLÉGIO ESTADUAL OURO NEGRO",
+    school: elements.schoolName.value.trim() || "COLÉGIO XXXXXXXXXXX",
     title: elements.examTitle.value.trim() || "SIMULADO DA X UNIDADE - XXXXX",
     date: elements.examDate.value ? dateValue : "_____/_____/_____",
     series: elements.seriesName.value.trim() || "1ª",
@@ -327,7 +830,6 @@ function getPreviewPayload() {
       elements.studentName.value.trim() ||
       "_____________________________________________________",
     instructions: elements.examInstructions.value.trim(),
-    type: elements.questionType.value
   };
 }
 
@@ -411,10 +913,32 @@ function renderPreview() {
           : [];
       const imagePosition = item.imagePosition || "top";
       const imageScalePercent = clampNumber(Number(item.imageScalePercent) || 100, 10, 300);
-      const questionFontSize = clampNumber(Number(item.fontSize) || 13, 10, 18);
+      const stemAlignment = ["justify", "left", "center", "right"].includes(item.stemAlignment)
+        ? item.stemAlignment
+        : "justify";
+      const stemColumns = clampNumber(Number(item.stemColumns) || 1, 1, 3);
+      const questionFontSize = clampNumber(Number(item.fontSize) || DEFAULT_QUESTION_FONT_SIZE, 10, 18);
+      const answerMode = item.answerMode === "essay-lines" ? "essay-lines" : "alternatives";
+      const essayLineCount = clampNumber(
+        Number(item.essayLineCount) || DEFAULT_QUESTION_ESSAY_LINES,
+        1,
+        30
+      );
       const isAlternativesAside =
         imagePosition === "alternatives-left" ||
         imagePosition === "alternatives-right";
+      const alternativesAsideEnabled = isAlternativesAside && answerMode === "alternatives";
+      const hasImages = imageDataUrls.length > 0;
+      const usesSideLayout =
+        imagePosition === "left" ||
+        imagePosition === "right" ||
+        alternativesAsideEnabled;
+      const compactAlternatives = stemColumns >= 3;
+      const effectiveAlternativesColumns =
+        compactAlternatives && normalizedAlternatives.length === 5 && Number(item.alternativesColumns) >= 3
+          ? 5
+          : clampNumber(Number(item.alternativesColumns) || 1, 1, 5);
+      const showStemInHeader = !usesSideLayout && stemColumns === 1;
       const alternatives = normalizedAlternatives
         .map(
           (alternative) => `
@@ -427,7 +951,7 @@ function renderPreview() {
         .join("");
 
       const inlineImageMarkup =
-        imageDataUrls.length && !isAlternativesAside
+        imageDataUrls.length && !alternativesAsideEnabled
           ? renderQuestionImagesMarkup(
               imageDataUrls,
               `Imagem da questão ${questionIndex}`,
@@ -436,34 +960,45 @@ function renderPreview() {
               imagePosition
             )
           : "";
-      const questionBody = isAlternativesAside
+      const stemHtml = renderStemWithColumnMarkers(item.stem || "[Enunciado pendente]", stemColumns);
+      const questionStemMarkup = `<span class="question-stem-inline text-align-${stemAlignment}">${stemHtml}</span>`;
+      const questionBody = usesSideLayout
         ? `
           <div class="question-body question-body-no-image">
-            <div class="question-body-text">${renderInlineFormatting(item.stem || "[Enunciado pendente]")}</div>
+            <div class="question-body-text text-align-${stemAlignment}">${stemHtml}</div>
           </div>
         `
         : `
           <div class="question-body question-body-${imagePosition}">
-            ${imageDataUrls.length && imagePosition !== "bottom" ? inlineImageMarkup : ""}
-            <div class="question-body-text">${renderInlineFormatting(item.stem || "[Enunciado pendente]")}</div>
-            ${imageDataUrls.length && imagePosition === "bottom" ? inlineImageMarkup : ""}
+              ${hasImages && imagePosition !== "bottom" ? inlineImageMarkup : ""}
+              ${!showStemInHeader ? `<div class="question-body-text text-align-${stemAlignment}">${stemHtml}</div>` : ""}
+              ${hasImages && imagePosition === "bottom" ? inlineImageMarkup : ""}
           </div>
         `;
 
-      const alternativesMarkup = alternatives
+      const alternativesMarkup = answerMode === "alternatives" && alternatives
         ? `<div class="alternatives ${
-            item.alternativesColumns === 2
+            effectiveAlternativesColumns === 2
               ? "alternatives-cols-2"
-              : item.alternativesColumns === 3
+              : effectiveAlternativesColumns === 3
                 ? "alternatives-cols-3"
-                : item.alternativesColumns === 4
+                : effectiveAlternativesColumns === 4
                   ? "alternatives-cols-4"
+                  : effectiveAlternativesColumns === 5
+                    ? "alternatives-cols-5"
                   : ""
           }">${alternatives}</div>`
         : "";
 
+      const essayLinesMarkup =
+        answerMode === "essay-lines"
+          ? `<div class="question-essay-lines">${Array.from({ length: essayLineCount })
+              .map(() => '<div class="question-essay-line" aria-hidden="true"></div>')
+              .join("")}</div>`
+          : "";
+
       const alternativesWithImage =
-        isAlternativesAside && imageDataUrls.length && alternativesMarkup
+        alternativesAsideEnabled && imageDataUrls.length && alternativesMarkup
           ? `
             <div class="question-alternatives-with-image ${
               imagePosition === "alternatives-left" ? "image-left" : "image-right"
@@ -478,9 +1013,12 @@ function renderPreview() {
           : alternativesMarkup;
 
       return `
-        <article class="question-card" style="--question-font-size: ${questionFontSize}px;">
+        <article class="question-card${compactAlternatives ? " compact-answer-spacing" : ""}" style="--question-font-size: ${questionFontSize}px;">
           <div class="question-title">
-            <span>Questão ${questionIndex}</span>
+            <div class="question-title-main">
+              <span class="question-number">Questão ${questionIndex}</span>
+              ${showStemInHeader ? questionStemMarkup : ""}
+            </div>
             <div class="question-actions">
               <button class="secondary item-action" data-action="move-up" data-index="${index}" type="button">↑</button>
               <button class="secondary item-action" data-action="move-down" data-index="${index}" type="button">↓</button>
@@ -489,6 +1027,7 @@ function renderPreview() {
             </div>
           </div>
           ${questionBody}
+          ${essayLinesMarkup}
           ${alternativesWithImage}
         </article>
       `;
@@ -509,8 +1048,6 @@ function startEditingQuestion(index) {
       ? [item.imageDataUrl]
       : [];
 
-  const questionType = item.type || (normalizedAlternatives.length ? "multiple" : "essay");
-  elements.questionType.value = questionType;
   elements.stemOutput.value = item.stem || "";
   elements.alternativesOutput.value = normalizedAlternatives
     .map((alternative, altIndex) => {
@@ -526,17 +1063,33 @@ function startEditingQuestion(index) {
     .filter(Boolean)
     .join("\n\n");
   elements.questionAlternativesColumns.value = String(Number(item.alternativesColumns) || 1);
-  elements.questionFontSize.value = String(clampNumber(Number(item.fontSize) || 13, 10, 18));
+  elements.questionFontSize.value = String(clampNumber(Number(item.fontSize) || DEFAULT_QUESTION_FONT_SIZE, 10, 18));
+  elements.questionStemAlignment.value = ["justify", "left", "center", "right"].includes(item.stemAlignment)
+    ? item.stemAlignment
+    : "justify";
+  elements.questionStemColumns.value = String(clampNumber(Number(item.stemColumns) || 1, 1, 3));
+  elements.questionAnswerMode.value = item.answerMode === "essay-lines" ? "essay-lines" : "alternatives";
+  elements.questionEssayLines.value = String(
+    clampNumber(Number(item.essayLineCount) || DEFAULT_QUESTION_ESSAY_LINES, 1, 30)
+  );
+  updateQuestionAnswerModeUi();
   elements.questionImagePosition.value = item.imagePosition || "top";
   setImageScaleUi(item.imageScalePercent);
   state.currentImageDataUrls = [...imageDataUrls];
+  const questionType = getQuestionTypeFromAnswerMode(elements.questionAnswerMode.value);
   state.currentQuestion = {
     stem: item.stem || "",
     alternatives: normalizedAlternatives,
     type: questionType,
     typeLabel:
       item.typeLabel ||
-      elements.questionType.options[elements.questionType.selectedIndex].textContent
+      getQuestionTypeLabel(questionType),
+    stemAlignment: ["justify", "left", "center", "right"].includes(item.stemAlignment)
+      ? item.stemAlignment
+      : "justify",
+    stemColumns: clampNumber(Number(item.stemColumns) || 1, 1, 3),
+    answerMode: item.answerMode === "essay-lines" ? "essay-lines" : "alternatives",
+    essayLineCount: clampNumber(Number(item.essayLineCount) || DEFAULT_QUESTION_ESSAY_LINES, 1, 30)
   };
   state.editingQuestionIndex = index;
   elements.addQuestion.textContent = "Salvar edição";
@@ -585,12 +1138,17 @@ function organizeCurrentQuestion() {
     return;
   }
 
-  const parsed = parseQuestion(rawText, elements.questionType.value);
+  const questionType = getQuestionTypeFromAnswerMode();
+  const parsed = parseQuestion(rawText, questionType);
   state.currentQuestion = {
     stem: parsed.stem,
     alternatives: parsed.alternatives,
-    type: elements.questionType.value,
-    typeLabel: elements.questionType.options[elements.questionType.selectedIndex].textContent
+    type: questionType,
+    typeLabel: getQuestionTypeLabel(questionType),
+    stemAlignment: getQuestionStemAlignment(),
+    stemColumns: getQuestionStemColumns(),
+    answerMode: getQuestionAnswerMode(),
+    essayLineCount: getQuestionEssayLineCount()
   };
 
   elements.stemOutput.value = parsed.stem;
@@ -611,12 +1169,14 @@ function addCurrentQuestion() {
 
   const fallbackStem = state.currentQuestion?.stem?.trim() ?? "";
   const finalStem = manualStem || fallbackStem;
+  const answerMode = getQuestionAnswerMode();
+  const essayLineCount = getQuestionEssayLineCount();
   const alternatives = elements.alternativesOutput.value
     .split(/\r?\n/)
     .map((line) => line.trim())
     .filter(Boolean)
     .map((line) => {
-      const match = line.match(/^([A-Ea-e])(?:[\).:-]|\s+)?\s*(.+)$/);
+      const match = line.match(/^([A-Ea-e])\s*[\).:-]\s*(.+)$/);
       if (!match) {
         return { label: "", text: line };
       }
@@ -624,24 +1184,30 @@ function addCurrentQuestion() {
       return { label: match[1].toLowerCase(), text: match[2].trim() };
     });
 
-  if (!finalStem && !alternatives.length) {
+  const finalAlternatives = answerMode === "essay-lines" ? [] : alternatives;
+
+  if (!finalStem && !finalAlternatives.length) {
     elements.parserStatus.textContent = "Nada para adicionar ainda";
     return;
   }
 
   state.questions.push({
     kind: "question",
-    type: state.currentQuestion?.type ?? elements.questionType.value,
+    type: state.currentQuestion?.type ?? getQuestionTypeFromAnswerMode(answerMode),
     stem: finalStem,
-    alternatives,
+    alternatives: finalAlternatives,
     alternativesColumns: Number(elements.questionAlternativesColumns.value) || 1,
     fontSize: getQuestionFontSize(),
+    stemAlignment: getQuestionStemAlignment(),
+    stemColumns: getQuestionStemColumns(),
+    answerMode,
+    essayLineCount,
     imageDataUrls: [...getCurrentImageDataUrls()],
     imagePosition: elements.questionImagePosition.value || "top",
     imageScalePercent: getQuestionImageScalePercent(),
     typeLabel:
       state.currentQuestion?.typeLabel ??
-      elements.questionType.options[elements.questionType.selectedIndex].textContent
+      getQuestionTypeLabel(getQuestionTypeFromAnswerMode(answerMode))
   });
 
   if (
@@ -695,7 +1261,12 @@ function clearQuestionEditor() {
   elements.questionImageFile.value = "";
   elements.questionImagePosition.value = "top";
   setImageScaleUi(100);
-  elements.questionFontSize.value = "13";
+  elements.questionFontSize.value = String(DEFAULT_QUESTION_FONT_SIZE);
+  elements.questionStemAlignment.value = "justify";
+  elements.questionStemColumns.value = "1";
+  elements.questionAnswerMode.value = "alternatives";
+  elements.questionEssayLines.value = String(DEFAULT_QUESTION_ESSAY_LINES);
+  updateQuestionAnswerModeUi();
   state.currentQuestion = null;
   state.currentImageDataUrls = [];
   state.editingQuestionIndex = null;
@@ -766,7 +1337,8 @@ async function onQuestionImageSelected(filesInput) {
 }
 
 function loadExample() {
-  elements.questionType.value = "multiple";
+  elements.questionAnswerMode.value = "alternatives";
+  updateQuestionAnswerModeUi();
   elements.rawQuestion.value = exampleQuestion;
   organizeCurrentQuestion();
 }
@@ -787,9 +1359,6 @@ function bindLivePreview() {
     field.addEventListener("input", renderPreview);
   });
 
-  elements.questionType.addEventListener("change", () => {
-    organizeCurrentQuestion();
-  });
 }
 
 function bindFormattingButtons() {
@@ -831,74 +1400,33 @@ function bindFormattingButtons() {
 }
 
 function hydrateFromStorage() {
-  const saved = localStorage.getItem("prova-facil-mvp");
+  const saved = localStorage.getItem(EXAM_STORAGE_KEY);
   const defaultTemplate = getTemplateById("standard");
   if (!saved) {
-    state.templateId = defaultTemplate.id;
-    elements.examInstructions.value = defaultTemplate.instructions;
-    elements.examDate.valueAsDate = new Date();
+    applyExamData({
+      templateId: defaultTemplate.id,
+      examInstructions: defaultTemplate.instructions,
+      examDate: new Date().toISOString().slice(0, 10)
+    });
     return;
   }
 
   try {
-    const data = JSON.parse(saved);
-    elements.schoolName.value = data.schoolName ?? elements.schoolName.value;
-    elements.examTitle.value = data.examTitle ?? elements.examTitle.value;
-    elements.seriesName.value = data.seriesName ?? elements.seriesName.value;
-    elements.groupName.value = data.groupName ?? elements.groupName.value;
-    elements.shiftName.value = data.shiftName ?? elements.shiftName.value;
-    elements.studentName.value = data.studentName ?? elements.studentName.value;
-    elements.examDate.value = data.examDate ?? elements.examDate.value;
-    elements.examInstructions.value = data.examInstructions ?? elements.examInstructions.value;
-    elements.rawQuestion.value = data.rawQuestion ?? "";
-    elements.stemOutput.value = data.stemOutput ?? "";
-    elements.alternativesOutput.value = data.alternativesOutput ?? "";
-    state.templateId = getTemplateById(data.templateId ?? defaultTemplate.id).id;
-    if (!elements.examInstructions.value.trim()) {
-      elements.examInstructions.value = getTemplateById(state.templateId).instructions;
-    }
-    state.questions = Array.isArray(data.questions)
-      ? data.questions.map((item) => ({
-          kind: "question",
-          type: "multiple",
-          alternativesColumns: 1,
-          fontSize: 13,
-          imageDataUrls: Array.isArray(item.imageDataUrls)
-            ? item.imageDataUrls
-            : item.imageDataUrl
-              ? [item.imageDataUrl]
-              : [],
-          imagePosition: "top",
-          imageScalePercent: 100,
-          ...item
-        }))
-      : [];
+    applyExamData(JSON.parse(saved));
   } catch {
-    state.templateId = defaultTemplate.id;
-    elements.examInstructions.value = defaultTemplate.instructions;
-    elements.examDate.valueAsDate = new Date();
+    applyExamData({
+      templateId: defaultTemplate.id,
+      examInstructions: defaultTemplate.instructions,
+      examDate: new Date().toISOString().slice(0, 10)
+    });
   }
 }
 
 function persistToStorage() {
-  const data = {
-    schoolName: elements.schoolName.value,
-    examTitle: elements.examTitle.value,
-    seriesName: elements.seriesName.value,
-    groupName: elements.groupName.value,
-    shiftName: elements.shiftName.value,
-    studentName: elements.studentName.value,
-    examDate: elements.examDate.value,
-    examInstructions: elements.examInstructions.value,
-    rawQuestion: elements.rawQuestion.value,
-    stemOutput: elements.stemOutput.value,
-    alternativesOutput: elements.alternativesOutput.value,
-    templateId: state.templateId,
-    questions: state.questions
-  };
+  const data = getExamSnapshot();
 
   try {
-    localStorage.setItem("prova-facil-mvp", JSON.stringify(data));
+    localStorage.setItem(EXAM_STORAGE_KEY, JSON.stringify(data));
   } catch {
     elements.parserStatus.textContent = "Armazenamento cheio. Reduza imagens ou limpe a prova.";
   }
@@ -942,6 +1470,16 @@ elements.sectionSubjectSelect.addEventListener("change", () => {
   updateSubjectInputMode();
 });
 
+elements.questionAnswerMode.addEventListener("change", () => {
+  updateQuestionAnswerModeUi();
+  persistToStorage();
+});
+
+elements.questionEssayLines.addEventListener("input", () => {
+  elements.questionEssayLines.value = String(getQuestionEssayLineCount());
+  persistToStorage();
+});
+
 elements.clearQuestion.addEventListener("click", () => {
   clearQuestionEditor();
   persistToStorage();
@@ -982,6 +1520,11 @@ elements.clearQuestionImage.addEventListener("click", () => {
 elements.loadExample.addEventListener("click", () => {
   loadExample();
   persistToStorage();
+});
+
+elements.importExamFile.addEventListener("change", () => {
+  const [file] = Array.from(elements.importExamFile.files ?? []);
+  importExamFile(file, state.pendingImportTransferMode);
 });
 
 elements.printExam.addEventListener("click", () => {
@@ -1053,8 +1596,10 @@ hydrateFromStorage();
 renderTemplates();
 bindLivePreview();
 bindFormattingButtons();
+bindTransferMenu();
 wirePersistence();
 updateSubjectInputMode();
+updateQuestionAnswerModeUi();
 updateQuestionImagePreview();
 
 // Inicializar o gradiente do slider
