@@ -3,7 +3,7 @@ const templates = [
     id: "standard",
     name: "Padrão da escola",
     detail: "Cabeçalho institucional, margens limpas e questões numeradas.",
-    instructions: "1. Transcreva para a Folha de Respostas a opção que julgar correta em cada questão, preenchendo o campo correspondente com caneta de tinta preta ou azul.\n2. Nesta prova, as questões são de múltipla escolha, com cinco alternativas cada uma, sempre na sequência A, B, C, D e E, das quais somente uma é correta. \n3. Em hipótese alguma, o aluno poderá sair da sala com qualquer material referente a prova. Só será permitido ao aluno entregar sua prova escrita após 60 (sessenta) minutos do seu início."
+    instructions: "1. Transcreva para a Folha de Respostas a opção que julgar correta em cada questão, preenchendo o campo correspondente com caneta de **tinta preta ou azul**.\n2. Nesta prova, as questões são de múltipla escolha, com cinco alternativas cada uma, sempre na sequência **A, B, C, D e E**, das quais somente uma é correta. \n3. Em hipótese alguma, o aluno poderá sair da sala com qualquer material referente a prova. Só será permitido ao aluno entregar sua prova escrita após 60 (sessenta) minutos do seu início."
   }
 ];
 
@@ -74,6 +74,10 @@ E) dispensa a revisão final.`;
 
 const IMAGE_MAX_DIMENSION = 1400;
 const IMAGE_DEFAULT_QUALITY = 0.82;
+
+function getTemplateById(templateId) {
+  return templates.find((template) => template.id === templateId) || templates[0];
+}
 
 function formatDate(value) {
   if (!value) {
@@ -294,7 +298,7 @@ function getPreviewPayload() {
 
   return {
     school: elements.schoolName.value.trim() || "CEON - COLÉGIO ESTADUAL OURO NEGRO",
-    title: elements.examTitle.value.trim() || "Avaliação Bimestral",
+    title: elements.examTitle.value.trim() || "SIMULADO DA X UNIDADE - XXXXX",
     date: elements.examDate.value ? dateValue : "_____/_____/_____",
     series: elements.seriesName.value.trim() || "1ª",
     group: elements.groupName.value.trim() || "______",
@@ -704,7 +708,10 @@ function bindFormattingButtons() {
 
 function hydrateFromStorage() {
   const saved = localStorage.getItem("prova-facil-mvp");
+  const defaultTemplate = getTemplateById("standard");
   if (!saved) {
+    state.templateId = defaultTemplate.id;
+    elements.examInstructions.value = defaultTemplate.instructions;
     elements.examDate.valueAsDate = new Date();
     return;
   }
@@ -722,7 +729,10 @@ function hydrateFromStorage() {
     elements.rawQuestion.value = data.rawQuestion ?? "";
     elements.stemOutput.value = data.stemOutput ?? "";
     elements.alternativesOutput.value = data.alternativesOutput ?? "";
-    state.templateId = data.templateId ?? state.templateId;
+    state.templateId = getTemplateById(data.templateId ?? defaultTemplate.id).id;
+    if (!elements.examInstructions.value.trim()) {
+      elements.examInstructions.value = getTemplateById(state.templateId).instructions;
+    }
     state.questions = Array.isArray(data.questions)
       ? data.questions.map((item) => ({
           kind: "question",
@@ -738,6 +748,8 @@ function hydrateFromStorage() {
         }))
       : [];
   } catch {
+    state.templateId = defaultTemplate.id;
+    elements.examInstructions.value = defaultTemplate.instructions;
     elements.examDate.valueAsDate = new Date();
   }
 }
