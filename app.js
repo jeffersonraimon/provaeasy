@@ -33,6 +33,7 @@ const elements = {
   examDate: document.getElementById("examDate"),
   examInstructions: document.getElementById("examInstructions"),
   questionType: document.getElementById("questionType"),
+  questionAlternativesColumnsWrap: document.getElementById("questionAlternativesColumnsWrap"),
   questionAlternativesColumns: document.getElementById("questionAlternativesColumns"),
   questionFontSize: document.getElementById("questionFontSize"),
   questionStemAlignment: document.getElementById("questionStemAlignment"),
@@ -49,6 +50,7 @@ const elements = {
   questionImagePreview: document.getElementById("questionImagePreview"),
   rawQuestion: document.getElementById("rawQuestion"),
   stemOutput: document.getElementById("stemOutput"),
+  alternativesOutputWrap: document.getElementById("alternativesOutputWrap"),
   alternativesOutput: document.getElementById("alternativesOutput"),
   toggleInstructionsBold: document.getElementById("toggleInstructionsBold"),
   toggleInstructionsItalic: document.getElementById("toggleInstructionsItalic"),
@@ -217,6 +219,8 @@ function getQuestionEssayLineCount() {
 function updateQuestionAnswerModeUi() {
   const isEssay = getQuestionAnswerMode() === "essay-lines";
   elements.questionEssayLinesWrap.classList.toggle("hidden-field", !isEssay);
+  elements.questionAlternativesColumnsWrap.classList.toggle("hidden-field", isEssay);
+  elements.alternativesOutputWrap.classList.toggle("hidden-field", isEssay);
   elements.alternativesOutput.disabled = isEssay;
   elements.questionAlternativesColumns.disabled = isEssay;
 }
