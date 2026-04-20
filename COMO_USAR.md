@@ -1,64 +1,68 @@
 # Como usar o Prova Easy 
 
-Este guia foi feito para quem nao tem experiencia com tecnologia.
-Siga os passos na ordem e voce consegue montar uma prova do zero.
+Este guia foi feito para quem não tem experiência com tecnologia.
+Siga os passos na ordem e você consegue montar uma prova do zero.
 
-## 1) Abrir o aplicativo (em caso de baixar o coódigo fonte da aplicação)
+OBS: O Prova Easy não salva nada. Tudo fica salvo apenas no navegador, então, para não perder a prova, faça sempre o passo 8).
+
+## 1) Abrir o aplicativo (em caso de baixar o código fonte da aplicação)
 
 1. Abra o arquivo `index.html` no navegador (Chrome, Edge ou Firefox).
 2. Espere a tela principal carregar.
-3. Voce vai ver:
+3. Você vai ver:
    - Menu lateral com dados da prova
-   - Area para criar questoes
-   - Pre-visualizacao da prova
+   - Área para criar questões
+   - Pré-visualização da prova
 
 ## 2) Preencher os dados da prova
 
 No painel da esquerda, preencha:
 
 - Escola
-- Titulo
-- Serie
+- Título
+- Série
 - Turma
 - Turno
 - Nome do estudante (se quiser deixar modelo, pode manter em branco)
 - Data
-- Instrucoes da prova
+- Instruções da prova
 
-Dica: no campo de instrucoes, selecione um trecho e clique em B, I ou U para formatar.
+Dica: no campo de instruções, selecione um trecho e clique em B, I ou U para formatar.
 
-## 3) Criar uma questao
+## 3) Criar uma questão
 
-1. Na area "Texto bruto", cole o texto da questao (mesmo baguncado).
-2. Clique em **Organizar questao**.
+1. Na área "Texto bruto", cole o texto da questão (mesmo bagunçado).
+2. Clique em **Organizar questão**.
 3. Revise o que foi separado em:
    - Enunciado
    - Alternativas
 4. Ajuste, se precisar.
-5. Clique em **Adicionar a prova**.
+5. Clique em **Adicionar à prova**.
 
-Repita esse processo para todas as questoes.
+Repita esse processo para todas as questões.
+
+Dica: depois de adicionar a questão, você pode editar a própria questão e também mudar a ordem dela usando os botões de mover para cima e para baixo.
 
 ## 4) Escolher o tipo de resposta
 
-No campo "Resposta da questao", voce pode escolher:
+No campo "Resposta da questão", você pode escolher:
 
-- Com alternativas (multipla escolha)
+- Com alternativas (múltipla escolha)
 - Dissertativa (linhas)
 
 Se escolher dissertativa, defina quantas linhas o aluno deve usar.
 
-## 5) Adicionar imagem na questao
+## 5) Adicionar imagem na questão
 
-1. Clique em "Imagem da questao".
+1. Clique em "Imagem da questão".
 2. Escolha uma ou mais imagens.
 3. Defina:
-   - Posicao (acima, lado esquerdo, lado direito etc.)
+   - Posição (acima, lado esquerdo, lado direito etc.)
    - Tamanho (controle deslizante em %)
 
 ## 6) Inserir separador de disciplina
 
-Se a prova tiver varias materias:
+Se a prova tiver várias matérias:
 
 1. Escolha a disciplina no campo "Inserir disciplina da prova".
 2. Clique em **Adicionar disciplina**.
@@ -67,35 +71,47 @@ Isso organiza melhor a prova para o aluno.
 
 ## 7) Revisar antes de imprimir
 
-Na pre-visualizacao (lado direito):
+Na pré-visualização (lado direito):
 
-1. Confira dados do cabecalho.
-2. Confira numeracao e texto das questoes.
-3. Verifique se imagens e alternativas estao corretas.
+1. Confira dados do cabeçalho.
+2. Confira numeração e texto das questões.
+3. Verifique se imagens e alternativas estão corretas.
 
-## 8) Salvar, exportar e importar
+Se precisar, edite a questão e reorganize a ordem antes de imprimir.
 
-No botao **Importar/Exportar (JSON)**, voce pode:
+## 8) Colunas no enunciado
+
+Se quiser quebrar o enunciado em colunas, use os marcadores:
+
+- `/col/` para iniciar uma nova coluna
+- `/endcol/` para voltar ao texto normal
+
+Isso é útil para organizar trechos longos dentro da mesma questão.
+Em Coluna do enunciado seleciona 2 ou 3.
+
+## 9) Salvar, exportar e importar
+
+No botão **Importar/Exportar (JSON)**, você pode:
 
 - Exportar prova completa
-- Exportar apenas questoes e disciplinas
+- Exportar apenas questões e disciplinas
 - Importar um arquivo JSON salvo anteriormente
 
-Isso ajuda a nao perder trabalho e reaproveitar provas.
+Isso ajuda a não perder trabalho e reaproveitar provas.
 
-## 9) Imprimir
+## 10) Imprimir
 
 1. Clique em **Imprimir**.
-2. Na janela de impressao, entre em "Mais configuracoes".
-3. Desative "Cabecalhos e Rodape" para sair limpo.
+2. Na janela de impressão, entre em "Mais configurações".
+3. Desative "Cabeçalhos e Rodapé" para sair limpo.
 4. Imprima ou salve em PDF.
 
-## 10) Se algo der errado
+## 11) Se algo der errado
 
-- Se uma questao nao organizar corretamente, ajuste manualmente o enunciado e as alternativas.
+- Se uma questão não organizar corretamente, ajuste manualmente o enunciado e as alternativas.
 - Se a imagem ficar muito grande, reduza o percentual.
-- Se quiser recomeçar tudo, use o botao "Limpar prova inteira".
+- Se quiser recomeçar tudo, use o botão "Limpar prova inteira".
 
 ---
 
-Pronto. Com esses passos, qualquer pessoa consegue montar uma prova no Prova Easy sem conhecimento tecnico.
+Pronto. Com esses passos, qualquer pessoa consegue montar uma prova no Prova Easy sem conhecimento técnico.
