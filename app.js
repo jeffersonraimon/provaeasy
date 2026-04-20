@@ -24,7 +24,7 @@ const elements = {
   examDate: document.getElementById("examDate"),
   examInstructions: document.getElementById("examInstructions"),
   questionType: document.getElementById("questionType"),
-  alternativesColumns: document.getElementById("alternativesColumns"),
+  questionAlternativesColumns: document.getElementById("questionAlternativesColumns"),
   rawQuestion: document.getElementById("rawQuestion"),
   stemOutput: document.getElementById("stemOutput"),
   alternativesOutput: document.getElementById("alternativesOutput"),
@@ -159,7 +159,6 @@ function renderPreview() {
   const questionOnlyCount = state.questions.filter(
     (item) => item.kind !== "subject-break"
   ).length;
-  const columns = elements.alternativesColumns.value;
 
   elements.previewSchool.textContent = payload.school;
   elements.previewTitle.textContent = payload.title;
@@ -172,7 +171,6 @@ function renderPreview() {
   elements.questionCount.textContent = `${questionOnlyCount} ${
     questionOnlyCount === 1 ? "questão" : "questões"
   }`;
-  elements.questionList.classList.toggle("alternatives-two-columns", columns === "2");
 
   if (!state.questions.length) {
     elements.questionList.innerHTML = `
@@ -222,7 +220,9 @@ function renderPreview() {
             </div>
           </div>
           <div class="question-body">${item.stem || "[Enunciado pendente]"}</div>
-          ${alternatives ? `<div class="alternatives">${alternatives}</div>` : ""}
+          ${alternatives ? `<div class="alternatives ${
+            item.alternativesColumns === 2 ? "alternatives-cols-2" : ""
+          }">${alternatives}</div>` : ""}
         </article>
       `;
     })
@@ -284,6 +284,7 @@ function addCurrentQuestion() {
     kind: "question",
     stem: finalStem,
     alternatives,
+    alternativesColumns: Number(elements.questionAlternativesColumns.value) || 1,
     typeLabel:
       state.currentQuestion?.typeLabel ??
       elements.questionType.options[elements.questionType.selectedIndex].textContent
@@ -343,8 +344,7 @@ function bindLivePreview() {
     elements.shiftName,
     elements.studentName,
     elements.examDate,
-    elements.examInstructions,
-    elements.alternativesColumns
+    elements.examInstructions
   ];
 
   liveFields.forEach((field) => {
@@ -373,11 +373,13 @@ function hydrateFromStorage() {
     elements.studentName.value = data.studentName ?? elements.studentName.value;
     elements.examDate.value = data.examDate ?? elements.examDate.value;
     elements.examInstructions.value = data.examInstructions ?? elements.examInstructions.value;
-    elements.alternativesColumns.value =
-      data.alternativesColumns ?? elements.alternativesColumns.value;
     state.templateId = data.templateId ?? state.templateId;
     state.questions = Array.isArray(data.questions)
-      ? data.questions.map((item) => ({ kind: "question", ...item }))
+      ? data.questions.map((item) => ({
+          kind: "question",
+          alternativesColumns: 1,
+          ...item
+        }))
       : [];
   } catch {
     elements.examDate.valueAsDate = new Date();
@@ -394,7 +396,6 @@ function persistToStorage() {
     studentName: elements.studentName.value,
     examDate: elements.examDate.value,
     examInstructions: elements.examInstructions.value,
-    alternativesColumns: elements.alternativesColumns.value,
     templateId: state.templateId,
     questions: state.questions
   };
@@ -411,8 +412,7 @@ function wirePersistence() {
     elements.shiftName,
     elements.studentName,
     elements.examDate,
-    elements.examInstructions,
-    elements.alternativesColumns
+    elements.examInstructions
   ];
 
   fields.forEach((field) => {
