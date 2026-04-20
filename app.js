@@ -390,7 +390,11 @@ function renderPreview() {
           <article class="subject-break-card">
             <div class="subject-break-line">
               <span class="subject-break-name">${item.name}</span>
+              <div class="question-actions">
+                <button class="secondary item-action" data-action="move-up" data-index="${index}" type="button">↑</button>
+                <button class="secondary item-action" data-action="move-down" data-index="${index}" type="button">↓</button>
               <button class="danger item-action remove-item" data-action="remove" data-index="${index}" type="button">Remover</button>
+              </div>
             </div>
           </article>
         `;
