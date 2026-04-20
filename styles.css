@@ -202,7 +202,21 @@ label {
 }
 
 .hero-actions {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.hero-select {
+  margin-top: 0;
+}
+
+.hero-actions .primary,
+.hero-actions .secondary,
+.hero-actions .hero-select {
+  padding: 0.5rem 0.62rem;
+  min-height: 34px;
+  border-radius: 10px;
+  font-size: 0.82rem;
+  line-height: 1.15;
 }
 
 .row-3 {
@@ -365,9 +379,11 @@ label {
 
 .primary,
 .secondary {
-  padding: 0.9rem 1rem;
-  border-radius: 14px;
-  font-weight: 800;
+  padding: 0.62rem 0.78rem;
+  border-radius: 12px;
+  font-size: 0.9rem;
+  line-height: 1.2;
+  font-weight: 700;
 }
 
 .primary {

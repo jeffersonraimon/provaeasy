@@ -18,6 +18,8 @@ const state = {
 const EXAM_STORAGE_KEY = "prova-easy";
 const EXAM_EXPORT_VERSION = 1;
 const DEFAULT_QUESTION_FONT_SIZE = 12;
+const JSON_TRANSFER_MODE_FULL = "full";
+const JSON_TRANSFER_MODE_QUESTIONS = "questions";
 
 const elements = {
   templateList: document.getElementById("templateList"),
@@ -64,6 +66,7 @@ const elements = {
   previewStudent: document.getElementById("previewStudent"),
   previewInstructions: document.getElementById("previewInstructions"),
   questionList: document.getElementById("questionList"),
+  jsonTransferMode: document.getElementById("jsonTransferMode"),
   loadExample: document.getElementById("loadExample"),
   importExam: document.getElementById("importExam"),
   exportExam: document.getElementById("exportExam"),
@@ -389,10 +392,37 @@ function buildExamFileName() {
   return `${safeTitle || "prova"}-${datePart}.json`;
 }
 
+function buildQuestionsOnlySnapshot() {
+  return {
+    version: EXAM_EXPORT_VERSION,
+    exportScope: JSON_TRANSFER_MODE_QUESTIONS,
+    questions: state.questions
+  };
+}
+
+function importQuestionsOnly(data) {
+  state.questions = Array.isArray(data?.questions)
+    ? data.questions.map(normalizeQuestion)
+    : [];
+  state.currentQuestion = null;
+  state.editingQuestionIndex = null;
+  elements.addQuestion.textContent = "Adicionar à prova";
+  renderPreview();
+}
+
 function exportExam() {
-  const snapshot = getExamSnapshot();
-  downloadTextFile(JSON.stringify(snapshot, null, 2), buildExamFileName(), "application/json");
-  elements.parserStatus.textContent = "Prova exportada em JSON";
+  const transferMode = getJsonTransferMode();
+  const snapshot = transferMode === JSON_TRANSFER_MODE_QUESTIONS
+    ? buildQuestionsOnlySnapshot()
+    : getExamSnapshot();
+  const fileName = transferMode === JSON_TRANSFER_MODE_QUESTIONS
+    ? buildExamFileName().replace(/\.json$/, "-questoes.json")
+    : buildExamFileName();
+
+  downloadTextFile(JSON.stringify(snapshot, null, 2), fileName, "application/json");
+  elements.parserStatus.textContent = transferMode === JSON_TRANSFER_MODE_QUESTIONS
+    ? "Questões e disciplinas exportadas em JSON"
+    : "Prova completa exportada em JSON";
 }
 
 async function importExamFile(file) {
@@ -401,11 +431,19 @@ async function importExamFile(file) {
   }
 
   try {
+    const transferMode = getJsonTransferMode();
     const text = await file.text();
     const data = JSON.parse(text);
-    applyExamData(data);
+
+    if (transferMode === JSON_TRANSFER_MODE_QUESTIONS) {
+      importQuestionsOnly(data);
+      elements.parserStatus.textContent = "Questões e disciplinas importadas com sucesso";
+    } else {
+      applyExamData(data);
+      elements.parserStatus.textContent = "Prova completa importada com sucesso";
+    }
+
     persistToStorage();
-    elements.parserStatus.textContent = "Prova importada com sucesso";
   } catch {
     elements.parserStatus.textContent = "Não foi possível importar este arquivo JSON";
   } finally {
@@ -425,10 +463,17 @@ function getQuestionImageScalePercent() {
 function getQuestionFontSize() {
   const value = Number(elements.questionFontSize.value);
   if (!Number.isFinite(value)) {
-    return 13;
+    return DEFAULT_QUESTION_FONT_SIZE;
   }
 
   return clampNumber(value, 10, 18);
+}
+
+function getJsonTransferMode() {
+  const value = elements.jsonTransferMode.value;
+  return [JSON_TRANSFER_MODE_FULL, JSON_TRANSFER_MODE_QUESTIONS].includes(value)
+    ? value
+    : JSON_TRANSFER_MODE_FULL;
 }
 
 function setImageScaleUi(scaleValue) {
