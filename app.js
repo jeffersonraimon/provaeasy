@@ -34,6 +34,12 @@ const elements = {
   rawQuestion: document.getElementById("rawQuestion"),
   stemOutput: document.getElementById("stemOutput"),
   alternativesOutput: document.getElementById("alternativesOutput"),
+  toggleInstructionsBold: document.getElementById("toggleInstructionsBold"),
+  toggleInstructionsItalic: document.getElementById("toggleInstructionsItalic"),
+  toggleInstructionsUnderline: document.getElementById("toggleInstructionsUnderline"),
+  toggleStemBold: document.getElementById("toggleStemBold"),
+  toggleStemItalic: document.getElementById("toggleStemItalic"),
+  toggleStemUnderline: document.getElementById("toggleStemUnderline"),
   sectionSubjectSelect: document.getElementById("sectionSubjectSelect"),
   sectionSubjectOtherWrap: document.getElementById("sectionSubjectOtherWrap"),
   sectionSubjectOther: document.getElementById("sectionSubjectOther"),
@@ -77,6 +83,41 @@ function formatDate(value) {
   return `${day}/${month}/${year}`;
 }
 
+function escapeHtml(value) {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
+function renderInlineFormatting(value) {
+  const escaped = escapeHtml(value);
+  return escaped
+    .replace(/__(.+?)__/g, "<u>$1</u>")
+    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+    .replace(/\*(.+?)\*/g, "<em>$1</em>");
+}
+
+function wrapSelectionInTextarea(textarea, before, after) {
+  const start = textarea.selectionStart ?? 0;
+  const end = textarea.selectionEnd ?? 0;
+  const value = textarea.value;
+  const selectedText = value.slice(start, end);
+
+  if (!selectedText) {
+    const insertion = `${before}${after}`;
+    textarea.value = `${value.slice(0, start)}${insertion}${value.slice(end)}`;
+    const cursor = start + before.length;
+    textarea.setSelectionRange(cursor, cursor);
+    return;
+  }
+
+  const replacement = `${before}${selectedText}${after}`;
+  textarea.value = `${value.slice(0, start)}${replacement}${value.slice(end)}`;
+  textarea.setSelectionRange(start + before.length, start + before.length + selectedText.length);
+}
 function readFileAsDataUrl(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -240,7 +281,7 @@ function renderPreview() {
   elements.previewGroup.textContent = payload.group;
   elements.previewShift.textContent = payload.shift;
   elements.previewStudent.textContent = payload.student;
-  elements.previewInstructions.textContent = payload.instructions;
+  elements.previewInstructions.innerHTML = renderInlineFormatting(payload.instructions);
   elements.questionCount.textContent = `${questionOnlyCount} ${
     questionOnlyCount === 1 ? "questão" : "questões"
   }`;
@@ -295,13 +336,13 @@ function renderPreview() {
       const questionBody = isAlternativesAside
         ? `
           <div class="question-body question-body-no-image">
-            <div class="question-body-text">${item.stem || "[Enunciado pendente]"}</div>
+            <div class="question-body-text">${renderInlineFormatting(item.stem || "[Enunciado pendente]")}</div>
           </div>
         `
         : `
           <div class="question-body question-body-${imagePosition}">
             ${imageDataUrl && imagePosition !== "bottom" ? inlineImageMarkup : ""}
-            <div class="question-body-text">${item.stem || "[Enunciado pendente]"}</div>
+            <div class="question-body-text">${renderInlineFormatting(item.stem || "[Enunciado pendente]")}</div>
             ${imageDataUrl && imagePosition === "bottom" ? inlineImageMarkup : ""}
           </div>
         `;
@@ -517,6 +558,44 @@ function bindLivePreview() {
   });
 }
 
+function bindFormattingButtons() {
+  elements.toggleStemBold.addEventListener("click", () => {
+    wrapSelectionInTextarea(elements.stemOutput, "**", "**");
+    elements.stemOutput.dispatchEvent(new Event("input", { bubbles: true }));
+    persistToStorage();
+  });
+
+  elements.toggleStemItalic.addEventListener("click", () => {
+    wrapSelectionInTextarea(elements.stemOutput, "*", "*");
+    elements.stemOutput.dispatchEvent(new Event("input", { bubbles: true }));
+    persistToStorage();
+  });
+
+  elements.toggleStemUnderline.addEventListener("click", () => {
+    wrapSelectionInTextarea(elements.stemOutput, "__", "__");
+    elements.stemOutput.dispatchEvent(new Event("input", { bubbles: true }));
+    persistToStorage();
+  });
+
+  elements.toggleInstructionsBold.addEventListener("click", () => {
+    wrapSelectionInTextarea(elements.examInstructions, "**", "**");
+    elements.examInstructions.dispatchEvent(new Event("input", { bubbles: true }));
+    persistToStorage();
+  });
+
+  elements.toggleInstructionsItalic.addEventListener("click", () => {
+    wrapSelectionInTextarea(elements.examInstructions, "*", "*");
+    elements.examInstructions.dispatchEvent(new Event("input", { bubbles: true }));
+    persistToStorage();
+  });
+
+  elements.toggleInstructionsUnderline.addEventListener("click", () => {
+    wrapSelectionInTextarea(elements.examInstructions, "__", "__");
+    elements.examInstructions.dispatchEvent(new Event("input", { bubbles: true }));
+    persistToStorage();
+  });
+}
+
 function hydrateFromStorage() {
   const saved = localStorage.getItem("prova-facil-mvp");
   if (!saved) {
@@ -670,6 +749,7 @@ elements.questionList.addEventListener("click", (event) => {
 hydrateFromStorage();
 renderTemplates();
 bindLivePreview();
+bindFormattingButtons();
 wirePersistence();
 updateSubjectInputMode();
 updateQuestionImagePreview();

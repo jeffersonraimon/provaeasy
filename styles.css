@@ -244,6 +244,33 @@ label {
   border-radius: 10px;
 }
 
+.inline-format-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  margin-top: 0.35rem;
+  margin-bottom: 0.25rem;
+  color: var(--muted);
+  font-weight: 600;
+  font-size: 0.8rem;
+}
+
+.format-button {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--text);
+  font-weight: 900;
+  font-size: 0.95rem;
+  padding: 0;
+}
+
+.format-button:hover {
+  background: rgba(15, 118, 110, 0.08);
+}
+
 .hidden-field {
   display: none;
 }
@@ -490,6 +517,11 @@ label {
 
 .question-body-text {
   white-space: pre-wrap;
+}
+
+.question-body-text strong,
+.paper-instructions strong {
+  font-weight: 900;
 }
 
 .question-image {
