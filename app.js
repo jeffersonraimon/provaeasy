@@ -17,6 +17,7 @@ const state = {
 
 const EXAM_STORAGE_KEY = "prova-easy";
 const EXAM_EXPORT_VERSION = 1;
+const DEFAULT_QUESTION_FONT_SIZE = 12;
 
 const elements = {
   templateList: document.getElementById("templateList"),
@@ -211,7 +212,7 @@ function normalizeQuestion(item) {
       stem: "",
       alternatives: [],
       alternativesColumns: 1,
-      fontSize: 13,
+      fontSize: DEFAULT_QUESTION_FONT_SIZE,
       stemAlignment: "justify",
       stemColumns: 1,
       imageDataUrls: [],
@@ -243,7 +244,7 @@ function normalizeQuestion(item) {
     stem: String(item.stem || ""),
     alternatives,
     alternativesColumns: Number(item.alternativesColumns) || 1,
-    fontSize: clampNumber(Number(item.fontSize) || 13, 10, 18),
+    fontSize: clampNumber(Number(item.fontSize) || DEFAULT_QUESTION_FONT_SIZE, 10, 18),
     stemAlignment: ["justify", "left", "center", "right"].includes(item.stemAlignment)
       ? item.stemAlignment
       : "justify",
@@ -727,7 +728,7 @@ function renderPreview() {
         ? item.stemAlignment
         : "justify";
       const stemColumns = clampNumber(Number(item.stemColumns) || 1, 1, 3);
-      const questionFontSize = clampNumber(Number(item.fontSize) || 13, 10, 18);
+      const questionFontSize = clampNumber(Number(item.fontSize) || DEFAULT_QUESTION_FONT_SIZE, 10, 18);
       const isAlternativesAside =
         imagePosition === "alternatives-left" ||
         imagePosition === "alternatives-right";
@@ -860,7 +861,7 @@ function startEditingQuestion(index) {
     .filter(Boolean)
     .join("\n\n");
   elements.questionAlternativesColumns.value = String(Number(item.alternativesColumns) || 1);
-  elements.questionFontSize.value = String(clampNumber(Number(item.fontSize) || 13, 10, 18));
+  elements.questionFontSize.value = String(clampNumber(Number(item.fontSize) || DEFAULT_QUESTION_FONT_SIZE, 10, 18));
   elements.questionStemAlignment.value = ["justify", "left", "center", "right"].includes(item.stemAlignment)
     ? item.stemAlignment
     : "justify";
@@ -1041,7 +1042,7 @@ function clearQuestionEditor() {
   elements.questionImageFile.value = "";
   elements.questionImagePosition.value = "top";
   setImageScaleUi(100);
-  elements.questionFontSize.value = "13";
+  elements.questionFontSize.value = String(DEFAULT_QUESTION_FONT_SIZE);
   elements.questionStemAlignment.value = "justify";
   elements.questionStemColumns.value = "1";
   state.currentQuestion = null;
