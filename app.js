@@ -15,7 +15,7 @@ const state = {
   editingQuestionIndex: null
 };
 
-const EXAM_STORAGE_KEY = "prova-facil-mvp";
+const EXAM_STORAGE_KEY = "prova-easy";
 const EXAM_EXPORT_VERSION = 1;
 
 const elements = {
