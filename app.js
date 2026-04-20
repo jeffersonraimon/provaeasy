@@ -349,7 +349,13 @@ function renderPreview() {
 
       const alternativesMarkup = alternatives
         ? `<div class="alternatives ${
-            item.alternativesColumns === 2 ? "alternatives-cols-2" : ""
+            item.alternativesColumns === 2
+              ? "alternatives-cols-2"
+              : item.alternativesColumns === 3
+                ? "alternatives-cols-3"
+                : item.alternativesColumns === 4
+                  ? "alternatives-cols-4"
+                  : ""
           }">${alternatives}</div>`
         : "";
 
