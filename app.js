@@ -1303,7 +1303,7 @@ async function onQuestionImageSelected(filesInput) {
   }
 
   if (!files[0].type.startsWith("image/")) {
-    elements.parserStatus.textContent = "Selecione um arquivo de imagem valido";
+    elements.parserStatus.textContent = "Selecione um arquivo de imagem válido";
     elements.questionImageFile.value = "";
     state.currentImageDataUrls = [];
     updateQuestionImagePreview();
@@ -1533,12 +1533,12 @@ elements.printExam.addEventListener("click", () => {
 
 elements.clearExam.addEventListener("click", () => {
   if (!state.questions.length) {
-    elements.parserStatus.textContent = "A prova ja esta vazia";
+    elements.parserStatus.textContent = "A prova já está vazia";
     return;
   }
 
   state.questions = [];
-  elements.parserStatus.textContent = "Todas as questoes foram removidas";
+  elements.parserStatus.textContent = "Todas as questões foram removidas";
   renderPreview();
   persistToStorage();
 });
