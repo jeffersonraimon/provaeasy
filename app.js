@@ -12,7 +12,8 @@ const state = {
   questions: [],
   currentQuestion: null,
   currentImageDataUrls: [],
-  editingQuestionIndex: null
+  editingQuestionIndex: null,
+  pendingImportTransferMode: "full"
 };
 
 const EXAM_STORAGE_KEY = "prova-easy";
@@ -71,10 +72,10 @@ const elements = {
   previewStudent: document.getElementById("previewStudent"),
   previewInstructions: document.getElementById("previewInstructions"),
   questionList: document.getElementById("questionList"),
-  jsonTransferMode: document.getElementById("jsonTransferMode"),
+  transferMenuWrap: document.getElementById("transferMenuWrap"),
+  transferMenuButton: document.getElementById("transferMenuButton"),
+  transferMenu: document.getElementById("transferMenu"),
   loadExample: document.getElementById("loadExample"),
-  importExam: document.getElementById("importExam"),
-  exportExam: document.getElementById("exportExam"),
   importExamFile: document.getElementById("importExamFile"),
   organizeQuestion: document.getElementById("organizeQuestion"),
   clearQuestion: document.getElementById("clearQuestion"),
@@ -472,32 +473,38 @@ function importQuestionsOnly(data) {
   renderPreview();
 }
 
-function exportExam() {
-  const transferMode = getJsonTransferMode();
-  const snapshot = transferMode === JSON_TRANSFER_MODE_QUESTIONS
+function normalizeTransferMode(mode) {
+  return mode === JSON_TRANSFER_MODE_QUESTIONS
+    ? JSON_TRANSFER_MODE_QUESTIONS
+    : JSON_TRANSFER_MODE_FULL;
+}
+
+function exportExam(transferMode = JSON_TRANSFER_MODE_FULL) {
+  const safeTransferMode = normalizeTransferMode(transferMode);
+  const snapshot = safeTransferMode === JSON_TRANSFER_MODE_QUESTIONS
     ? buildQuestionsOnlySnapshot()
     : getExamSnapshot();
-  const fileName = transferMode === JSON_TRANSFER_MODE_QUESTIONS
+  const fileName = safeTransferMode === JSON_TRANSFER_MODE_QUESTIONS
     ? buildExamFileName().replace(/\.json$/, "-questoes.json")
     : buildExamFileName();
 
   downloadTextFile(JSON.stringify(snapshot, null, 2), fileName, "application/json");
-  elements.parserStatus.textContent = transferMode === JSON_TRANSFER_MODE_QUESTIONS
+  elements.parserStatus.textContent = safeTransferMode === JSON_TRANSFER_MODE_QUESTIONS
     ? "Questões e disciplinas exportadas em JSON"
     : "Prova completa exportada em JSON";
 }
 
-async function importExamFile(file) {
+async function importExamFile(file, transferMode = JSON_TRANSFER_MODE_FULL) {
   if (!file) {
     return;
   }
 
   try {
-    const transferMode = getJsonTransferMode();
+    const safeTransferMode = normalizeTransferMode(transferMode);
     const text = await file.text();
     const data = JSON.parse(text);
 
-    if (transferMode === JSON_TRANSFER_MODE_QUESTIONS) {
+    if (safeTransferMode === JSON_TRANSFER_MODE_QUESTIONS) {
       importQuestionsOnly(data);
       elements.parserStatus.textContent = "Questões e disciplinas importadas com sucesso";
     } else {
@@ -509,6 +516,7 @@ async function importExamFile(file) {
   } catch {
     elements.parserStatus.textContent = "Não foi possível importar este arquivo JSON";
   } finally {
+    state.pendingImportTransferMode = JSON_TRANSFER_MODE_FULL;
     elements.importExamFile.value = "";
   }
 }
@@ -531,11 +539,86 @@ function getQuestionFontSize() {
   return clampNumber(value, 10, 18);
 }
 
-function getJsonTransferMode() {
-  const value = elements.jsonTransferMode.value;
-  return [JSON_TRANSFER_MODE_FULL, JSON_TRANSFER_MODE_QUESTIONS].includes(value)
-    ? value
-    : JSON_TRANSFER_MODE_FULL;
+function closeTransferMenu() {
+  if (!elements.transferMenu || !elements.transferMenuButton) {
+    return;
+  }
+
+  elements.transferMenu.classList.add("hidden-field");
+  elements.transferMenuButton.setAttribute("aria-expanded", "false");
+}
+
+function openTransferMenu() {
+  if (!elements.transferMenu || !elements.transferMenuButton) {
+    return;
+  }
+
+  elements.transferMenu.classList.remove("hidden-field");
+  elements.transferMenuButton.setAttribute("aria-expanded", "true");
+}
+
+function toggleTransferMenu() {
+  if (!elements.transferMenu) {
+    return;
+  }
+
+  const isOpen = !elements.transferMenu.classList.contains("hidden-field");
+  if (isOpen) {
+    closeTransferMenu();
+    return;
+  }
+
+  openTransferMenu();
+}
+
+function bindTransferMenu() {
+  if (!elements.transferMenu || !elements.transferMenuWrap || !elements.transferMenuButton) {
+    return;
+  }
+
+  const optionButtons = Array.from(
+    elements.transferMenu.querySelectorAll("button[data-transfer-action][data-transfer-mode]")
+  );
+
+  elements.transferMenuButton.addEventListener("click", (event) => {
+    event.stopPropagation();
+    toggleTransferMenu();
+  });
+
+  optionButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      const transferAction = String(button.dataset.transferAction || "");
+      const transferMode = normalizeTransferMode(button.dataset.transferMode);
+      closeTransferMenu();
+
+      if (transferAction === "export") {
+        exportExam(transferMode);
+        return;
+      }
+
+      if (transferAction === "import") {
+        state.pendingImportTransferMode = transferMode;
+        elements.importExamFile.value = "";
+        elements.importExamFile.click();
+      }
+    });
+  });
+
+  document.addEventListener("click", (event) => {
+    if (!(event.target instanceof Node)) {
+      return;
+    }
+
+    if (!elements.transferMenuWrap.contains(event.target)) {
+      closeTransferMenu();
+    }
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      closeTransferMenu();
+    }
+  });
 }
 
 function setImageScaleUi(scaleValue) {
@@ -1439,18 +1522,9 @@ elements.loadExample.addEventListener("click", () => {
   persistToStorage();
 });
 
-elements.exportExam.addEventListener("click", () => {
-  exportExam();
-});
-
-elements.importExam.addEventListener("click", () => {
-  elements.importExamFile.value = "";
-  elements.importExamFile.click();
-});
-
 elements.importExamFile.addEventListener("change", () => {
   const [file] = Array.from(elements.importExamFile.files ?? []);
-  importExamFile(file);
+  importExamFile(file, state.pendingImportTransferMode);
 });
 
 elements.printExam.addEventListener("click", () => {
@@ -1522,6 +1596,7 @@ hydrateFromStorage();
 renderTemplates();
 bindLivePreview();
 bindFormattingButtons();
+bindTransferMenu();
 wirePersistence();
 updateSubjectInputMode();
 updateQuestionAnswerModeUi();
