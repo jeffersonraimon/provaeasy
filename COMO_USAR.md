@@ -23,6 +23,7 @@ No painel da esquerda, preencha:
 - Série
 - Turma
 - Turno
+- Nome do professor (opcional)
 - Nome do estudante (se quiser deixar modelo, pode manter em branco)
 - Data
 - Instruções da prova
@@ -76,6 +77,8 @@ Na pré-visualização (lado direito):
 1. Confira dados do cabeçalho.
 2. Confira numeração e texto das questões.
 3. Verifique se imagens e alternativas estão corretas.
+
+Se você escreveu o nome do professor, ele aparece no cabeçalho. Também há uma caixa pequena de Nota.
 
 Se precisar, edite a questão e reorganize a ordem antes de imprimir.
 

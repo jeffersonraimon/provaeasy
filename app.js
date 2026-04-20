@@ -31,6 +31,8 @@ const elements = {
   groupName: document.getElementById("groupName"),
   shiftName: document.getElementById("shiftName"),
   studentName: document.getElementById("studentName"),
+  professorName: document.getElementById("professorName"),
+  professorNameEnabled: document.getElementById("professorNameEnabled"),
   examDate: document.getElementById("examDate"),
   examInstructions: document.getElementById("examInstructions"),
   questionAlternativesColumnsWrap: document.getElementById("questionAlternativesColumnsWrap"),
@@ -65,6 +67,8 @@ const elements = {
   questionCount: document.getElementById("questionCount"),
   previewSchool: document.getElementById("previewSchool"),
   previewTitle: document.getElementById("previewTitle"),
+  previewTeacherWrap: document.getElementById("previewTeacherWrap"),
+  previewTeacher: document.getElementById("previewTeacher"),
   previewDate: document.getElementById("previewDate"),
   previewSeries: document.getElementById("previewSeries"),
   previewGroup: document.getElementById("previewGroup"),
@@ -315,6 +319,11 @@ function normalizeExamData(data) {
     groupName: typeof data?.groupName === "string" ? data.groupName : elements.groupName.value,
     shiftName: typeof data?.shiftName === "string" ? data.shiftName : elements.shiftName.value,
     studentName: typeof data?.studentName === "string" ? data.studentName : elements.studentName.value,
+    professorName: typeof data?.professorName === "string" ? data.professorName : elements.professorName.value,
+    professorNameEnabled:
+      typeof data?.professorNameEnabled === "boolean"
+        ? data.professorNameEnabled
+        : Boolean(elements.professorNameEnabled.checked),
     examDate: typeof data?.examDate === "string" ? data.examDate : elements.examDate.value,
     examInstructions:
       typeof data?.examInstructions === "string" ? data.examInstructions : elements.examInstructions.value,
@@ -378,6 +387,8 @@ function applyExamData(data) {
   elements.groupName.value = normalized.groupName;
   elements.shiftName.value = normalized.shiftName;
   elements.studentName.value = normalized.studentName;
+  elements.professorName.value = normalized.professorName;
+  elements.professorNameEnabled.checked = normalized.professorNameEnabled;
   elements.examDate.value = normalized.examDate;
   elements.examInstructions.value = normalized.examInstructions;
   elements.rawQuestion.value = normalized.rawQuestion;
@@ -413,6 +424,8 @@ function getExamSnapshot() {
     groupName: elements.groupName.value,
     shiftName: elements.shiftName.value,
     studentName: elements.studentName.value,
+    professorName: elements.professorName.value,
+    professorNameEnabled: elements.professorNameEnabled.checked,
     examDate: elements.examDate.value,
     examInstructions: elements.examInstructions.value,
     rawQuestion: elements.rawQuestion.value,
@@ -862,9 +875,13 @@ function renderPreview() {
   const questionOnlyCount = state.questions.filter(
     (item) => item.kind !== "subject-break"
   ).length;
+  const teacherName = elements.professorName.value.trim();
+  const teacherEnabled = elements.professorNameEnabled.checked;
 
   elements.previewSchool.textContent = payload.school;
   elements.previewTitle.textContent = payload.title;
+  elements.previewTeacher.textContent = teacherName;
+  elements.previewTeacherWrap.classList.toggle("hidden-field", !(teacherEnabled && teacherName));
   elements.previewDate.textContent = payload.date;
   elements.previewSeries.textContent = payload.series;
   elements.previewGroup.textContent = payload.group;
@@ -1351,6 +1368,8 @@ function bindLivePreview() {
     elements.groupName,
     elements.shiftName,
     elements.studentName,
+    elements.professorName,
+    elements.professorNameEnabled,
     elements.examDate,
     elements.examInstructions
   ];
@@ -1358,6 +1377,10 @@ function bindLivePreview() {
   liveFields.forEach((field) => {
     field.addEventListener("input", renderPreview);
   });
+
+  if (elements.professorNameEnabled) {
+    elements.professorNameEnabled.addEventListener("change", renderPreview);
+  }
 
 }
 
@@ -1440,6 +1463,8 @@ function wirePersistence() {
     elements.groupName,
     elements.shiftName,
     elements.studentName,
+    elements.professorName,
+    elements.professorNameEnabled,
     elements.examDate,
     elements.examInstructions
   ];
@@ -1449,6 +1474,10 @@ function wirePersistence() {
       persistToStorage();
     });
   });
+
+  if (elements.professorNameEnabled) {
+    elements.professorNameEnabled.addEventListener("change", persistToStorage);
+  }
 }
 
 elements.organizeQuestion.addEventListener("click", () => {
