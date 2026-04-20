@@ -574,9 +574,32 @@ label {
 .question-title {
   display: flex;
   justify-content: space-between;
-  gap: 1rem;
-  margin-bottom: 0.4rem;
+  align-items: flex-start;
+  gap: 0.85rem;
+  margin-bottom: 0.45rem;
   font-weight: 800;
+}
+
+.question-title-main {
+  display: flex;
+  align-items: baseline;
+  gap: 0.45rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.question-number {
+  white-space: nowrap;
+  flex: 0 0 auto;
+}
+
+.question-stem-inline {
+  min-width: 0;
+  font-weight: 400;
+  font-size: var(--question-font-size, 13px);
+  line-height: 1.35;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .question-actions {

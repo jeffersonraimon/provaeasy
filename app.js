@@ -636,6 +636,11 @@ function renderPreview() {
       const isAlternativesAside =
         imagePosition === "alternatives-left" ||
         imagePosition === "alternatives-right";
+      const hasImages = imageDataUrls.length > 0;
+      const usesSideLayout =
+        imagePosition === "left" ||
+        imagePosition === "right" ||
+        isAlternativesAside;
       const alternatives = normalizedAlternatives
         .map(
           (alternative) => `
@@ -657,7 +662,8 @@ function renderPreview() {
               imagePosition
             )
           : "";
-      const questionBody = isAlternativesAside
+        const questionStemMarkup = `<span class="question-stem-inline">${renderInlineFormatting(item.stem || "[Enunciado pendente]")}</span>`;
+        const questionBody = usesSideLayout
         ? `
           <div class="question-body question-body-no-image">
             <div class="question-body-text">${renderInlineFormatting(item.stem || "[Enunciado pendente]")}</div>
@@ -665,9 +671,8 @@ function renderPreview() {
         `
         : `
           <div class="question-body question-body-${imagePosition}">
-            ${imageDataUrls.length && imagePosition !== "bottom" ? inlineImageMarkup : ""}
-            <div class="question-body-text">${renderInlineFormatting(item.stem || "[Enunciado pendente]")}</div>
-            ${imageDataUrls.length && imagePosition === "bottom" ? inlineImageMarkup : ""}
+              ${hasImages && imagePosition !== "bottom" ? inlineImageMarkup : ""}
+              ${hasImages && imagePosition === "bottom" ? inlineImageMarkup : ""}
           </div>
         `;
 
@@ -701,7 +706,10 @@ function renderPreview() {
       return `
         <article class="question-card" style="--question-font-size: ${questionFontSize}px;">
           <div class="question-title">
-            <span>Questão ${questionIndex}</span>
+            <div class="question-title-main">
+              <span class="question-number">Questão ${questionIndex}</span>
+              ${!usesSideLayout ? questionStemMarkup : ""}
+            </div>
             <div class="question-actions">
               <button class="secondary item-action" data-action="move-up" data-index="${index}" type="button">↑</button>
               <button class="secondary item-action" data-action="move-down" data-index="${index}" type="button">↓</button>
