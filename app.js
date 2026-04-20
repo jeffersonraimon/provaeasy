@@ -488,7 +488,7 @@ function parseQuestion(rawText, type) {
     return { stem: lines.join("\n"), alternatives: [] };
   }
 
-  const alternativePattern = /^(?:[-*•]\s*)?([A-Ea-e]|[1-5])(?:[\).:-]|\s+)?\s*(.+)$/;
+  const alternativePattern = /^(?:[-*•]\s*)?([A-Ea-e]|[1-5])\s*[\).:-]\s*(.+)$/;
   const alternatives = [];
   const stemLines = [];
 
@@ -821,7 +821,7 @@ function addCurrentQuestion() {
     .map((line) => line.trim())
     .filter(Boolean)
     .map((line) => {
-      const match = line.match(/^([A-Ea-e])(?:[\).:-]|\s+)?\s*(.+)$/);
+      const match = line.match(/^([A-Ea-e])\s*[\).:-]\s*(.+)$/);
       if (!match) {
         return { label: "", text: line };
       }
