@@ -111,11 +111,19 @@ function escapeHtml(value) {
 }
 
 function renderInlineFormatting(value) {
-  const escaped = escapeHtml(value);
+  const blanks = [];
+  const protectedValue = String(value).replace(/_{3,}/g, (match) => {
+    const token = `[[[BLANK_${blanks.length}]]]`;
+    blanks.push({ token, value: match });
+    return token;
+  });
+
+  const escaped = escapeHtml(protectedValue);
   return escaped
-    .replace(/__(.+?)__/g, "<u>$1</u>")
+    .replace(/__([\s\S]+?)__/g, "<u>$1</u>")
     .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
-    .replace(/\*(.+?)\*/g, "<em>$1</em>");
+    .replace(/\*(.+?)\*/g, "<em>$1</em>")
+    .replace(/\[\[\[BLANK_(\d+)\]\]\]/g, (_, index) => blanks[Number(index)]?.value || "");
 }
 
 function getCurrentImageDataUrls() {
