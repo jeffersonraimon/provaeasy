@@ -3,7 +3,7 @@
 Este guia foi feito para quem não tem experiência com tecnologia.
 Siga os passos na ordem e você consegue montar uma prova do zero.
 
-OBS: O Prova Easy não salva nada. Tudo fica salvo apenas no navegador, então, para não perder a prova, faça sempre o passo 8).
+OBS: O Prova Easy não salva nada. Tudo fica salvo apenas no navegador, então, para não perder a prova, faça sempre o passo 9).
 
 ## 1) Abrir o aplicativo (em caso de baixar o código fonte da aplicação)
 
