@@ -26,6 +26,7 @@ const elements = {
   examInstructions: document.getElementById("examInstructions"),
   questionType: document.getElementById("questionType"),
   questionAlternativesColumns: document.getElementById("questionAlternativesColumns"),
+  questionFontSize: document.getElementById("questionFontSize"),
   questionImageFile: document.getElementById("questionImageFile"),
   questionImagePosition: document.getElementById("questionImagePosition"),
   questionImageScalePercent: document.getElementById("questionImageScalePercent"),
@@ -120,6 +121,15 @@ function getQuestionImageScalePercent() {
   }
 
   return clampNumber(value, 10, 300);
+}
+
+function getQuestionFontSize() {
+  const value = Number(elements.questionFontSize.value);
+  if (!Number.isFinite(value)) {
+    return 16;
+  }
+
+  return clampNumber(value, 12, 20);
 }
 
 function getImageDimensionsForPosition(imagePosition, scalePercent) {
@@ -387,6 +397,7 @@ function renderPreview() {
           : [];
       const imagePosition = item.imagePosition || "top";
       const imageScalePercent = clampNumber(Number(item.imageScalePercent) || 100, 10, 300);
+      const questionFontSize = clampNumber(Number(item.fontSize) || 16, 12, 20);
       const isAlternativesAside =
         imagePosition === "alternatives-left" ||
         imagePosition === "alternatives-right";
@@ -453,7 +464,7 @@ function renderPreview() {
           : alternativesMarkup;
 
       return `
-        <article class="question-card">
+        <article class="question-card" style="--question-font-size: ${questionFontSize}px;">
           <div class="question-title">
             <span>Questão ${questionIndex}</span>
             <div class="question-actions">
@@ -528,6 +539,7 @@ function addCurrentQuestion() {
     stem: finalStem,
     alternatives,
     alternativesColumns: Number(elements.questionAlternativesColumns.value) || 1,
+    fontSize: getQuestionFontSize(),
     imageDataUrls: [...getCurrentImageDataUrls()],
     imagePosition: elements.questionImagePosition.value || "top",
     imageScalePercent: getQuestionImageScalePercent(),
@@ -574,6 +586,7 @@ function clearQuestionEditor() {
   elements.questionImageFile.value = "";
   elements.questionImagePosition.value = "top";
   elements.questionImageScalePercent.value = "100";
+  elements.questionFontSize.value = "16";
   state.currentQuestion = null;
   state.currentImageDataUrls = [];
   updateQuestionImagePreview();
@@ -737,6 +750,7 @@ function hydrateFromStorage() {
       ? data.questions.map((item) => ({
           kind: "question",
           alternativesColumns: 1,
+          fontSize: 16,
           imageDataUrls: Array.isArray(item.imageDataUrls)
             ? item.imageDataUrls
             : item.imageDataUrl
