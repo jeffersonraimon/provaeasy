@@ -281,6 +281,18 @@ label {
   margin: 0.3rem 0 0;
 }
 
+.preview-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.clear-exam {
+  padding: 0.55rem 0.75rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
 .chip {
   display: inline-flex;
   align-items: center;
@@ -481,7 +493,8 @@ label {
   .chip,
   .toolbar,
   .section-header:first-child,
-  .remove-question {
+  .remove-question,
+  .clear-exam {
     display: none !important;
   }
 

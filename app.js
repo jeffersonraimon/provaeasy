@@ -56,7 +56,8 @@ const elements = {
   organizeQuestion: document.getElementById("organizeQuestion"),
   clearQuestion: document.getElementById("clearQuestion"),
   addQuestion: document.getElementById("addQuestion"),
-  printExam: document.getElementById("printExam")
+  printExam: document.getElementById("printExam"),
+  clearExam: document.getElementById("clearExam")
 };
 
 const exampleQuestion = `A leitura crítica ajuda o estudante porque:
@@ -393,6 +394,18 @@ elements.loadExample.addEventListener("click", () => {
 
 elements.printExam.addEventListener("click", () => {
   window.print();
+});
+
+elements.clearExam.addEventListener("click", () => {
+  if (!state.questions.length) {
+    elements.parserStatus.textContent = "A prova ja esta vazia";
+    return;
+  }
+
+  state.questions = [];
+  elements.parserStatus.textContent = "Todas as questoes foram removidas";
+  renderPreview();
+  persistToStorage();
 });
 
 elements.questionList.addEventListener("click", (event) => {
