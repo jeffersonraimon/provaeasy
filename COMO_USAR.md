@@ -23,9 +23,9 @@ No painel da esquerda, preencha:
 - Série
 - Turma
 - Turno
-- Nome do professor (opcional)
+- Nome do professor 
 - Nome do estudante (se quiser deixar modelo, pode manter em branco)
-- Data
+- Data (se apagar a data, fica o modelo para preencher com caneta)
 - Instruções da prova
 
 Dica: no campo de instruções, selecione um trecho e clique em B, I ou U para formatar.
