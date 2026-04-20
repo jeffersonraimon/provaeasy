@@ -736,6 +736,11 @@ function renderPreview() {
         imagePosition === "left" ||
         imagePosition === "right" ||
         isAlternativesAside;
+      const compactAlternatives = stemColumns >= 3;
+      const effectiveAlternativesColumns =
+        compactAlternatives && normalizedAlternatives.length === 5 && Number(item.alternativesColumns) >= 3
+          ? 5
+          : clampNumber(Number(item.alternativesColumns) || 1, 1, 5);
       const showStemInHeader = !usesSideLayout && stemColumns === 1;
       const alternatives = normalizedAlternatives
         .map(
@@ -776,12 +781,14 @@ function renderPreview() {
 
       const alternativesMarkup = alternatives
         ? `<div class="alternatives ${
-            item.alternativesColumns === 2
+            effectiveAlternativesColumns === 2
               ? "alternatives-cols-2"
-              : item.alternativesColumns === 3
+              : effectiveAlternativesColumns === 3
                 ? "alternatives-cols-3"
-                : item.alternativesColumns === 4
+                : effectiveAlternativesColumns === 4
                   ? "alternatives-cols-4"
+                  : effectiveAlternativesColumns === 5
+                    ? "alternatives-cols-5"
                   : ""
           }">${alternatives}</div>`
         : "";
@@ -802,7 +809,7 @@ function renderPreview() {
           : alternativesMarkup;
 
       return `
-        <article class="question-card" style="--question-font-size: ${questionFontSize}px;">
+        <article class="question-card${compactAlternatives ? " compact-answer-spacing" : ""}" style="--question-font-size: ${questionFontSize}px;">
           <div class="question-title">
             <div class="question-title-main">
               <span class="question-number">Questão ${questionIndex}</span>
