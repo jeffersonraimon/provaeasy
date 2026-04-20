@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Prova Fácil MVP</title>
+    <meta
+      name="description"
+      content="MVP para organizar questões bagunçadas e montar provas padronizadas com templates da escola."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <span class="brand-mark">PF</span>
+          <div>
+            <p>Prova Fácil</p>
+            <span>MVP de padronização de questões</span>
+          </div>
+        </div>
+
+        <section class="panel panel-compact">
+          <h2>Template</h2>
+          <div class="template-list" id="templateList"></div>
+        </section>
+
+        <section class="panel">
+          <h2>Dados da prova</h2>
+          <label>
+            Escola
+            <input id="schoolName" type="text" value="CEON - COLÉGIO ESTADUAL OURO NEGRO" />
+          </label>
+          <label>
+            Título
+            <input id="examTitle" type="text" value="Avaliação Bimestral" />
+          </label>
+          <div class="row row-3">
+            <label>
+              Série
+              <input id="seriesName" type="text" value="1ª" />
+            </label>
+            <label>
+              Turma
+              <input id="groupName" type="text" placeholder="Ex.: A" />
+            </label>
+            <label>
+              Turno
+              <input id="shiftName" type="text" placeholder="Matutino" />
+            </label>
+          </div>
+          <label>
+            Estudante
+            <input id="studentName" type="text" placeholder="Nome do estudante" />
+          </label>
+          <div class="row">
+            <label>
+              Disciplina
+              <input id="subjectName" type="text" value="Língua Portuguesa" />
+            </label>
+            <label>
+              Data
+              <input id="examDate" type="date" />
+            </label>
+          </div>
+          <div class="row row-1">
+            <label>
+              Modelo
+              <select id="questionType">
+                <option value="multiple">Múltipla escolha</option>
+                <option value="essay">Dissertativa</option>
+                <option value="truefalse">Verdadeiro / falso</option>
+              </select>
+            </label>
+          </div>
+          <label>
+            Instruções
+            <textarea id="examInstructions" rows="4">Leia com atenção e responda usando caneta azul ou preta.</textarea>
+          </label>
+        </section>
+      </aside>
+
+      <main class="main-content">
+        <header class="hero">
+          <div>
+            <p class="eyebrow">Primeira versão funcional</p>
+            <h1>Padronize questões bagunçadas em poucos segundos.</h1>
+            <p class="hero-text">
+              Cole o texto bruto, ajuste o resultado e monte a prova com o padrão da escola sem
+              reformatar tudo manualmente.
+            </p>
+          </div>
+          <div class="hero-actions">
+            <button class="secondary" id="loadExample">Carregar exemplo</button>
+            <button class="primary" id="printExam">Exportar / Imprimir</button>
+          </div>
+        </header>
+
+        <section class="workspace">
+          <article class="panel editor">
+            <div class="section-header">
+              <div>
+                <h2>Nova questão</h2>
+                <p>Cole o texto bruto e deixe o organizador separar enunciado e alternativas.</p>
+              </div>
+              <span class="chip" id="parserStatus">Pronto para organizar</span>
+            </div>
+
+            <label>
+              Texto bruto
+              <textarea
+                id="rawQuestion"
+                rows="12"
+                placeholder="Cole aqui a questão do professor, mesmo que venha sem formatação."
+              ></textarea>
+            </label>
+
+            <div class="toolbar">
+              <button class="secondary" id="organizeQuestion">Organizar questão</button>
+              <button class="secondary" id="clearQuestion">Limpar</button>
+              <button class="primary" id="addQuestion">Adicionar à prova</button>
+            </div>
+
+            <div class="parsed-grid">
+              <label>
+                Enunciado
+                <textarea id="stemOutput" rows="7"></textarea>
+              </label>
+              <label>
+                Alternativas
+                <textarea id="alternativesOutput" rows="7"></textarea>
+              </label>
+            </div>
+          </article>
+
+          <article class="panel preview-panel">
+            <div class="section-header">
+              <div>
+                <h2>Pré-visualização</h2>
+                <p>Veja como a prova vai ficar antes de imprimir.</p>
+              </div>
+              <span class="chip" id="questionCount">0 questões</span>
+            </div>
+
+            <div class="paper" id="examPreview">
+              <div class="paper-header">
+                <p class="school" id="previewSchool">CEON - COLÉGIO ESTADUAL OURO NEGRO</p>
+                <h3 id="previewTitle">Avaliação Bimestral</h3>
+                <p class="meta" id="previewSubject">Disciplina: Língua Portuguesa</p>
+              </div>
+              <div class="header-lines">
+                <p>
+                  <strong>DATA:</strong> <span id="previewDate">_____/_____/_____</span>
+                  <strong>SÉRIE:</strong> <span id="previewSeries">1ª</span>
+                  <strong>TURMA:</strong> <span id="previewGroup">______</span>
+                </p>
+                <p><strong>TURNO:</strong> <span id="previewShift">_____________</span></p>
+                <p>
+                  <strong>ESTUDANTE:</strong>
+                  <span id="previewStudent">_____________________________________________________</span>
+                </p>
+              </div>
+              <div class="paper-instructions" id="previewInstructions">
+                Leia com atenção e responda usando caneta azul ou preta.
+              </div>
+              <div class="question-list" id="questionList"></div>
+            </div>
+          </article>
+        </section>
+      </main>
+    </div>
+
+    <template id="templateCard">
+      <button class="template-card" type="button">
+        <span class="template-name"></span>
+        <small class="template-detail"></small>
+      </button>
+    </template>
+
+    <script src="app.js"></script>
+  </body>
+</html>
