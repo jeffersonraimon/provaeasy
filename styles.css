@@ -581,21 +581,25 @@ label {
 }
 
 .question-title-main {
-  display: flex;
-  align-items: baseline;
-  gap: 0.45rem;
+  display: block;
   min-width: 0;
   flex: 1;
 }
 
+.question-title-main::after {
+  content: "";
+  display: block;
+  clear: both;
+}
+
 .question-number {
+  float: left;
   white-space: nowrap;
-  flex: 0 0 auto;
+  margin-right: 0.45rem;
 }
 
 .question-stem-inline {
   display: block;
-  flex: 1;
   min-width: 0;
   font-weight: 400;
   font-size: var(--question-font-size, 13px);
