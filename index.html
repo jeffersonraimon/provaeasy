@@ -178,6 +178,20 @@
               </label>
             </div>
 
+            <div class="row">
+              <label>
+                Resposta da questão
+                <select id="questionAnswerMode">
+                  <option value="alternatives" selected>Com alternativas</option>
+                  <option value="essay-lines">Dissertativa (linhas)</option>
+                </select>
+              </label>
+              <label id="questionEssayLinesWrap" class="hidden-field">
+                Quantidade de linhas
+                <input id="questionEssayLines" type="number" min="1" max="30" value="8" />
+              </label>
+            </div>
+
             <div class="question-image-controls">
               <label>
                 Imagem da questão

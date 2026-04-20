@@ -786,6 +786,17 @@ label {
   margin-top: 0;
 }
 
+.question-essay-lines {
+  margin-top: 0.45rem;
+  display: grid;
+  gap: 0.32rem;
+}
+
+.question-essay-line {
+  min-height: 1.05rem;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.35);
+}
+
 .alternatives {
   clear: both;
   margin-top: 0.4rem;

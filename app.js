@@ -18,6 +18,7 @@ const state = {
 const EXAM_STORAGE_KEY = "prova-easy";
 const EXAM_EXPORT_VERSION = 1;
 const DEFAULT_QUESTION_FONT_SIZE = 12;
+const DEFAULT_QUESTION_ESSAY_LINES = 8;
 const JSON_TRANSFER_MODE_FULL = "full";
 const JSON_TRANSFER_MODE_QUESTIONS = "questions";
 
@@ -36,6 +37,9 @@ const elements = {
   questionFontSize: document.getElementById("questionFontSize"),
   questionStemAlignment: document.getElementById("questionStemAlignment"),
   questionStemColumns: document.getElementById("questionStemColumns"),
+  questionAnswerMode: document.getElementById("questionAnswerMode"),
+  questionEssayLinesWrap: document.getElementById("questionEssayLinesWrap"),
+  questionEssayLines: document.getElementById("questionEssayLines"),
   questionImageFile: document.getElementById("questionImageFile"),
   questionImagePosition: document.getElementById("questionImagePosition"),
   questionImageScalePercent: document.getElementById("questionImageScalePercent"),
@@ -195,6 +199,28 @@ function getQuestionStemColumns() {
   return clampNumber(value, 1, 3);
 }
 
+function getQuestionAnswerMode() {
+  return elements.questionAnswerMode.value === "essay-lines"
+    ? "essay-lines"
+    : "alternatives";
+}
+
+function getQuestionEssayLineCount() {
+  const value = Number(elements.questionEssayLines.value);
+  if (!Number.isFinite(value)) {
+    return DEFAULT_QUESTION_ESSAY_LINES;
+  }
+
+  return clampNumber(value, 1, 30);
+}
+
+function updateQuestionAnswerModeUi() {
+  const isEssay = getQuestionAnswerMode() === "essay-lines";
+  elements.questionEssayLinesWrap.classList.toggle("hidden-field", !isEssay);
+  elements.alternativesOutput.disabled = isEssay;
+  elements.questionAlternativesColumns.disabled = isEssay;
+}
+
 function normalizeAlternative(alternative, index) {
   const fallbackLabel = String.fromCharCode(97 + index);
   if (!alternative || typeof alternative !== "object") {
@@ -218,6 +244,8 @@ function normalizeQuestion(item) {
       fontSize: DEFAULT_QUESTION_FONT_SIZE,
       stemAlignment: "justify",
       stemColumns: 1,
+      answerMode: "alternatives",
+      essayLineCount: DEFAULT_QUESTION_ESSAY_LINES,
       imageDataUrls: [],
       imagePosition: "top",
       imageScalePercent: 100,
@@ -252,6 +280,8 @@ function normalizeQuestion(item) {
       ? item.stemAlignment
       : "justify",
     stemColumns: clampNumber(Number(item.stemColumns) || 1, 1, 3),
+    answerMode: item.answerMode === "essay-lines" ? "essay-lines" : "alternatives",
+    essayLineCount: clampNumber(Number(item.essayLineCount) || DEFAULT_QUESTION_ESSAY_LINES, 1, 30),
     imageDataUrls,
     imagePosition: item.imagePosition || "top",
     imageScalePercent: clampNumber(Number(item.imageScalePercent) || 100, 10, 300),
@@ -285,6 +315,12 @@ function normalizeExamData(data) {
       Number.isFinite(Number(data?.questionStemColumns))
         ? clampNumber(Number(data.questionStemColumns), 1, 3)
         : 1,
+    questionAnswerMode:
+      data?.questionAnswerMode === "essay-lines" ? "essay-lines" : "alternatives",
+    questionEssayLineCount:
+      Number.isFinite(Number(data?.questionEssayLineCount))
+        ? clampNumber(Number(data.questionEssayLineCount), 1, 30)
+        : DEFAULT_QUESTION_ESSAY_LINES,
     templateId: getTemplateById(data?.templateId ?? defaultTemplate.id).id,
     questions: Array.isArray(data?.questions) ? data.questions.map(normalizeQuestion) : [],
     currentQuestion:
@@ -299,7 +335,14 @@ function normalizeExamData(data) {
             stemAlignment: ["justify", "left", "center", "right"].includes(data.currentQuestion.stemAlignment)
               ? data.currentQuestion.stemAlignment
               : "justify",
-            stemColumns: clampNumber(Number(data.currentQuestion.stemColumns) || 1, 1, 3)
+            stemColumns: clampNumber(Number(data.currentQuestion.stemColumns) || 1, 1, 3),
+            answerMode:
+              data.currentQuestion.answerMode === "essay-lines" ? "essay-lines" : "alternatives",
+            essayLineCount: clampNumber(
+              Number(data.currentQuestion.essayLineCount) || DEFAULT_QUESTION_ESSAY_LINES,
+              1,
+              30
+            )
           }
         : null,
     currentImageDataUrls: Array.isArray(data?.currentImageDataUrls)
@@ -327,6 +370,8 @@ function applyExamData(data) {
   elements.alternativesOutput.value = normalized.alternativesOutput;
   elements.questionStemAlignment.value = normalized.questionStemAlignment;
   elements.questionStemColumns.value = String(normalized.questionStemColumns);
+  elements.questionAnswerMode.value = normalized.questionAnswerMode;
+  elements.questionEssayLines.value = String(normalized.questionEssayLineCount);
   state.templateId = normalized.templateId;
   state.questions = normalized.questions;
   state.currentQuestion = normalized.currentQuestion;
@@ -338,6 +383,7 @@ function applyExamData(data) {
   }
 
   renderTemplates();
+  updateQuestionAnswerModeUi();
   updateSubjectInputMode();
   updateQuestionImagePreview();
   renderPreview();
@@ -359,6 +405,8 @@ function getExamSnapshot() {
     alternativesOutput: elements.alternativesOutput.value,
     questionStemAlignment: getQuestionStemAlignment(),
     questionStemColumns: getQuestionStemColumns(),
+    questionAnswerMode: getQuestionAnswerMode(),
+    questionEssayLineCount: getQuestionEssayLineCount(),
     templateId: state.templateId,
     questions: state.questions,
     currentQuestion: state.currentQuestion,
@@ -774,14 +822,21 @@ function renderPreview() {
         : "justify";
       const stemColumns = clampNumber(Number(item.stemColumns) || 1, 1, 3);
       const questionFontSize = clampNumber(Number(item.fontSize) || DEFAULT_QUESTION_FONT_SIZE, 10, 18);
+      const answerMode = item.answerMode === "essay-lines" ? "essay-lines" : "alternatives";
+      const essayLineCount = clampNumber(
+        Number(item.essayLineCount) || DEFAULT_QUESTION_ESSAY_LINES,
+        1,
+        30
+      );
       const isAlternativesAside =
         imagePosition === "alternatives-left" ||
         imagePosition === "alternatives-right";
+      const alternativesAsideEnabled = isAlternativesAside && answerMode === "alternatives";
       const hasImages = imageDataUrls.length > 0;
       const usesSideLayout =
         imagePosition === "left" ||
         imagePosition === "right" ||
-        isAlternativesAside;
+        alternativesAsideEnabled;
       const compactAlternatives = stemColumns >= 3;
       const effectiveAlternativesColumns =
         compactAlternatives && normalizedAlternatives.length === 5 && Number(item.alternativesColumns) >= 3
@@ -800,7 +855,7 @@ function renderPreview() {
         .join("");
 
       const inlineImageMarkup =
-        imageDataUrls.length && !isAlternativesAside
+        imageDataUrls.length && !alternativesAsideEnabled
           ? renderQuestionImagesMarkup(
               imageDataUrls,
               `Imagem da questão ${questionIndex}`,
@@ -825,7 +880,7 @@ function renderPreview() {
           </div>
         `;
 
-      const alternativesMarkup = alternatives
+      const alternativesMarkup = answerMode === "alternatives" && alternatives
         ? `<div class="alternatives ${
             effectiveAlternativesColumns === 2
               ? "alternatives-cols-2"
@@ -839,8 +894,15 @@ function renderPreview() {
           }">${alternatives}</div>`
         : "";
 
+      const essayLinesMarkup =
+        answerMode === "essay-lines"
+          ? `<div class="question-essay-lines">${Array.from({ length: essayLineCount })
+              .map(() => '<div class="question-essay-line" aria-hidden="true"></div>')
+              .join("")}</div>`
+          : "";
+
       const alternativesWithImage =
-        isAlternativesAside && imageDataUrls.length && alternativesMarkup
+        alternativesAsideEnabled && imageDataUrls.length && alternativesMarkup
           ? `
             <div class="question-alternatives-with-image ${
               imagePosition === "alternatives-left" ? "image-left" : "image-right"
@@ -869,6 +931,7 @@ function renderPreview() {
             </div>
           </div>
           ${questionBody}
+          ${essayLinesMarkup}
           ${alternativesWithImage}
         </article>
       `;
@@ -911,6 +974,11 @@ function startEditingQuestion(index) {
     ? item.stemAlignment
     : "justify";
   elements.questionStemColumns.value = String(clampNumber(Number(item.stemColumns) || 1, 1, 3));
+  elements.questionAnswerMode.value = item.answerMode === "essay-lines" ? "essay-lines" : "alternatives";
+  elements.questionEssayLines.value = String(
+    clampNumber(Number(item.essayLineCount) || DEFAULT_QUESTION_ESSAY_LINES, 1, 30)
+  );
+  updateQuestionAnswerModeUi();
   elements.questionImagePosition.value = item.imagePosition || "top";
   setImageScaleUi(item.imageScalePercent);
   state.currentImageDataUrls = [...imageDataUrls];
@@ -924,7 +992,9 @@ function startEditingQuestion(index) {
     stemAlignment: ["justify", "left", "center", "right"].includes(item.stemAlignment)
       ? item.stemAlignment
       : "justify",
-    stemColumns: clampNumber(Number(item.stemColumns) || 1, 1, 3)
+    stemColumns: clampNumber(Number(item.stemColumns) || 1, 1, 3),
+    answerMode: item.answerMode === "essay-lines" ? "essay-lines" : "alternatives",
+    essayLineCount: clampNumber(Number(item.essayLineCount) || DEFAULT_QUESTION_ESSAY_LINES, 1, 30)
   };
   state.editingQuestionIndex = index;
   elements.addQuestion.textContent = "Salvar edição";
@@ -980,7 +1050,9 @@ function organizeCurrentQuestion() {
     type: elements.questionType.value,
     typeLabel: elements.questionType.options[elements.questionType.selectedIndex].textContent,
     stemAlignment: getQuestionStemAlignment(),
-    stemColumns: getQuestionStemColumns()
+    stemColumns: getQuestionStemColumns(),
+    answerMode: getQuestionAnswerMode(),
+    essayLineCount: getQuestionEssayLineCount()
   };
 
   elements.stemOutput.value = parsed.stem;
@@ -1001,6 +1073,8 @@ function addCurrentQuestion() {
 
   const fallbackStem = state.currentQuestion?.stem?.trim() ?? "";
   const finalStem = manualStem || fallbackStem;
+  const answerMode = getQuestionAnswerMode();
+  const essayLineCount = getQuestionEssayLineCount();
   const alternatives = elements.alternativesOutput.value
     .split(/\r?\n/)
     .map((line) => line.trim())
@@ -1014,7 +1088,9 @@ function addCurrentQuestion() {
       return { label: match[1].toLowerCase(), text: match[2].trim() };
     });
 
-  if (!finalStem && !alternatives.length) {
+  const finalAlternatives = answerMode === "essay-lines" ? [] : alternatives;
+
+  if (!finalStem && !finalAlternatives.length) {
     elements.parserStatus.textContent = "Nada para adicionar ainda";
     return;
   }
@@ -1023,11 +1099,13 @@ function addCurrentQuestion() {
     kind: "question",
     type: state.currentQuestion?.type ?? elements.questionType.value,
     stem: finalStem,
-    alternatives,
+    alternatives: finalAlternatives,
     alternativesColumns: Number(elements.questionAlternativesColumns.value) || 1,
     fontSize: getQuestionFontSize(),
     stemAlignment: getQuestionStemAlignment(),
     stemColumns: getQuestionStemColumns(),
+    answerMode,
+    essayLineCount,
     imageDataUrls: [...getCurrentImageDataUrls()],
     imagePosition: elements.questionImagePosition.value || "top",
     imageScalePercent: getQuestionImageScalePercent(),
@@ -1090,6 +1168,9 @@ function clearQuestionEditor() {
   elements.questionFontSize.value = String(DEFAULT_QUESTION_FONT_SIZE);
   elements.questionStemAlignment.value = "justify";
   elements.questionStemColumns.value = "1";
+  elements.questionAnswerMode.value = "alternatives";
+  elements.questionEssayLines.value = String(DEFAULT_QUESTION_ESSAY_LINES);
+  updateQuestionAnswerModeUi();
   state.currentQuestion = null;
   state.currentImageDataUrls = [];
   state.editingQuestionIndex = null;
@@ -1295,6 +1376,16 @@ elements.sectionSubjectSelect.addEventListener("change", () => {
   updateSubjectInputMode();
 });
 
+elements.questionAnswerMode.addEventListener("change", () => {
+  updateQuestionAnswerModeUi();
+  persistToStorage();
+});
+
+elements.questionEssayLines.addEventListener("input", () => {
+  elements.questionEssayLines.value = String(getQuestionEssayLineCount());
+  persistToStorage();
+});
+
 elements.clearQuestion.addEventListener("click", () => {
   clearQuestionEditor();
   persistToStorage();
@@ -1422,6 +1513,7 @@ bindLivePreview();
 bindFormattingButtons();
 wirePersistence();
 updateSubjectInputMode();
+updateQuestionAnswerModeUi();
 updateQuestionImagePreview();
 
 // Inicializar o gradiente do slider
