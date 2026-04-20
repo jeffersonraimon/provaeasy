@@ -215,10 +215,14 @@ label {
 
 .subject-break-controls {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
   gap: 0.7rem;
   align-items: end;
   margin-bottom: 1rem;
+}
+
+.hidden-field {
+  display: none;
 }
 
 .primary,

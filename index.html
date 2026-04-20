@@ -127,10 +127,26 @@
             <div class="subject-break-controls">
               <label>
                 Inserir disciplina no meio da prova
+                <select id="sectionSubjectSelect">
+                  <option value="LINGUA PORTUGUESA">LÍNGUA PORTUGUESA</option>
+                  <option value="REDACAO">REDAÇÃO</option>
+                  <option value="LINGUA INGLESA">LÍNGUA INGLESA</option>
+                  <option value="GEOGRAFIA">GEOGRAFIA</option>
+                  <option value="HISTORIA">HISTÓRIA</option>
+                  <option value="FILOSOFIA">FILOSOFIA</option>
+                  <option value="BIOLOGIA">BIOLOGIA</option>
+                  <option value="QUIMICA">QUÍMICA</option>
+                  <option value="MATEMATICA">MATEMÁTICA</option>
+                  <option value="FISICA">FÍSICA</option>
+                  <option value="OUTRO">Outro:</option>
+                </select>
+              </label>
+              <label id="sectionSubjectOtherWrap" class="hidden-field">
+                Outro nome
                 <input
-                  id="sectionSubjectName"
+                  id="sectionSubjectOther"
                   type="text"
-                  placeholder="Ex.: Matemática, História, Ciências"
+                  placeholder="Digite a disciplina"
                 />
               </label>
               <button class="secondary" id="addSubjectBreak" type="button">Adicionar disciplina</button>

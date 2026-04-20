@@ -39,7 +39,9 @@ const elements = {
   rawQuestion: document.getElementById("rawQuestion"),
   stemOutput: document.getElementById("stemOutput"),
   alternativesOutput: document.getElementById("alternativesOutput"),
-  sectionSubjectName: document.getElementById("sectionSubjectName"),
+  sectionSubjectSelect: document.getElementById("sectionSubjectSelect"),
+  sectionSubjectOtherWrap: document.getElementById("sectionSubjectOtherWrap"),
+  sectionSubjectOther: document.getElementById("sectionSubjectOther"),
   parserStatus: document.getElementById("parserStatus"),
   questionCount: document.getElementById("questionCount"),
   previewSchool: document.getElementById("previewSchool"),
@@ -291,7 +293,10 @@ function addCurrentQuestion() {
 }
 
 function addSubjectBreak() {
-  const subjectName = elements.sectionSubjectName.value.trim();
+  const selected = elements.sectionSubjectSelect.value;
+  const manualName = elements.sectionSubjectOther.value.trim();
+  const subjectName = selected === "OUTRO" ? manualName : elements.sectionSubjectSelect.options[elements.sectionSubjectSelect.selectedIndex].textContent;
+
   if (!subjectName) {
     elements.parserStatus.textContent = "Digite o nome da disciplina para inserir";
     return;
@@ -302,9 +307,16 @@ function addSubjectBreak() {
     name: subjectName
   });
 
-  elements.sectionSubjectName.value = "";
+  if (selected === "OUTRO") {
+    elements.sectionSubjectOther.value = "";
+  }
   elements.parserStatus.textContent = "Disciplina inserida na prova";
   renderPreview();
+}
+
+function updateSubjectInputMode() {
+  const isOther = elements.sectionSubjectSelect.value === "OUTRO";
+  elements.sectionSubjectOtherWrap.classList.toggle("hidden-field", !isOther);
 }
 
 function clearQuestionEditor() {
@@ -419,6 +431,10 @@ elements.addSubjectBreak.addEventListener("click", () => {
   persistToStorage();
 });
 
+elements.sectionSubjectSelect.addEventListener("change", () => {
+  updateSubjectInputMode();
+});
+
 elements.clearQuestion.addEventListener("click", () => {
   clearQuestionEditor();
   persistToStorage();
@@ -470,6 +486,7 @@ hydrateFromStorage();
 renderTemplates();
 bindLivePreview();
 wirePersistence();
+updateSubjectInputMode();
 organizeCurrentQuestion();
 renderPreview();
 persistToStorage();
