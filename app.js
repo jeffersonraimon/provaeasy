@@ -267,7 +267,7 @@ function parseQuestion(rawText, type) {
     const match = line.match(alternativePattern);
     if (match) {
       alternatives.push({
-        label: match[1].toUpperCase(),
+        label: match[1].toLowerCase(),
         text: match[2].trim()
       });
       continue;
@@ -390,7 +390,7 @@ function renderPreview() {
         .map(
           (alternative) => `
             <div class="alternative">
-              <strong>${alternative.label})</strong>
+              <strong>${String(alternative.label || "").toLowerCase()})</strong>
               <span>${alternative.text}</span>
             </div>
           `
@@ -511,7 +511,7 @@ function addCurrentQuestion() {
         return { label: "", text: line };
       }
 
-      return { label: match[1].toUpperCase(), text: match[2].trim() };
+      return { label: match[1].toLowerCase(), text: match[2].trim() };
     });
 
   if (!finalStem && !alternatives.length) {
