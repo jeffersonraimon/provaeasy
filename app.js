@@ -522,7 +522,7 @@ function getPreviewPayload() {
   const dateValue = formatDate(elements.examDate.value);
 
   return {
-    school: elements.schoolName.value.trim() || "CEON - COLÉGIO ESTADUAL OURO NEGRO",
+    school: elements.schoolName.value.trim() || "COLÉGIO XXXXXXXXXXX",
     title: elements.examTitle.value.trim() || "SIMULADO DA X UNIDADE - XXXXX",
     date: elements.examDate.value ? dateValue : "_____/_____/_____",
     series: elements.seriesName.value.trim() || "1ª",
