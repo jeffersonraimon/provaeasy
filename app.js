@@ -24,6 +24,7 @@ const elements = {
   examDate: document.getElementById("examDate"),
   examInstructions: document.getElementById("examInstructions"),
   questionType: document.getElementById("questionType"),
+  alternativesColumns: document.getElementById("alternativesColumns"),
   rawQuestion: document.getElementById("rawQuestion"),
   stemOutput: document.getElementById("stemOutput"),
   alternativesOutput: document.getElementById("alternativesOutput"),
@@ -158,6 +159,7 @@ function renderPreview() {
   const questionOnlyCount = state.questions.filter(
     (item) => item.kind !== "subject-break"
   ).length;
+  const columns = elements.alternativesColumns.value;
 
   elements.previewSchool.textContent = payload.school;
   elements.previewTitle.textContent = payload.title;
@@ -170,6 +172,7 @@ function renderPreview() {
   elements.questionCount.textContent = `${questionOnlyCount} ${
     questionOnlyCount === 1 ? "questão" : "questões"
   }`;
+  elements.questionList.classList.toggle("alternatives-two-columns", columns === "2");
 
   if (!state.questions.length) {
     elements.questionList.innerHTML = `
@@ -195,7 +198,10 @@ function renderPreview() {
       }
 
       questionIndex += 1;
-      const alternatives = item.alternatives
+      const normalizedAlternatives = Array.isArray(item.alternatives)
+        ? item.alternatives
+        : [];
+      const alternatives = normalizedAlternatives
         .map(
           (alternative) => `
             <div class="alternative">
@@ -253,27 +259,34 @@ function addCurrentQuestion() {
     organizeCurrentQuestion();
   }
 
-  if (!state.currentQuestion || !state.currentQuestion.stem) {
+  const manualStem = elements.stemOutput.value.trim();
+  const fallbackStem = state.currentQuestion?.stem?.trim() ?? "";
+  const finalStem = manualStem || fallbackStem;
+  const alternatives = elements.alternativesOutput.value
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const match = line.match(/^([A-Ea-e])(?:[\).:-]|\s+)?\s*(.+)$/);
+      if (!match) {
+        return { label: "", text: line };
+      }
+
+      return { label: match[1].toUpperCase(), text: match[2].trim() };
+    });
+
+  if (!finalStem && !alternatives.length) {
     elements.parserStatus.textContent = "Nada para adicionar ainda";
     return;
   }
 
   state.questions.push({
     kind: "question",
-    stem: elements.stemOutput.value.trim() || state.currentQuestion.stem,
-    alternatives: elements.alternativesOutput.value
-      .split(/\r?\n/)
-      .map((line) => line.trim())
-      .filter(Boolean)
-      .map((line) => {
-        const match = line.match(/^([A-Ea-e])(?:[\).:-]|\s+)?\s*(.+)$/);
-        if (!match) {
-          return { label: "", text: line };
-        }
-
-        return { label: match[1].toUpperCase(), text: match[2].trim() };
-      }),
-    typeLabel: state.currentQuestion.typeLabel
+    stem: finalStem,
+    alternatives,
+    typeLabel:
+      state.currentQuestion?.typeLabel ??
+      elements.questionType.options[elements.questionType.selectedIndex].textContent
   });
 
   elements.parserStatus.textContent = "Questão adicionada à prova";
@@ -330,7 +343,8 @@ function bindLivePreview() {
     elements.shiftName,
     elements.studentName,
     elements.examDate,
-    elements.examInstructions
+    elements.examInstructions,
+    elements.alternativesColumns
   ];
 
   liveFields.forEach((field) => {
@@ -359,6 +373,8 @@ function hydrateFromStorage() {
     elements.studentName.value = data.studentName ?? elements.studentName.value;
     elements.examDate.value = data.examDate ?? elements.examDate.value;
     elements.examInstructions.value = data.examInstructions ?? elements.examInstructions.value;
+    elements.alternativesColumns.value =
+      data.alternativesColumns ?? elements.alternativesColumns.value;
     state.templateId = data.templateId ?? state.templateId;
     state.questions = Array.isArray(data.questions)
       ? data.questions.map((item) => ({ kind: "question", ...item }))
@@ -378,6 +394,7 @@ function persistToStorage() {
     studentName: elements.studentName.value,
     examDate: elements.examDate.value,
     examInstructions: elements.examInstructions.value,
+    alternativesColumns: elements.alternativesColumns.value,
     templateId: state.templateId,
     questions: state.questions
   };
@@ -394,7 +411,8 @@ function wirePersistence() {
     elements.shiftName,
     elements.studentName,
     elements.examDate,
-    elements.examInstructions
+    elements.examInstructions,
+    elements.alternativesColumns
   ];
 
   fields.forEach((field) => {
