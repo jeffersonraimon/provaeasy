@@ -1,4 +1,4 @@
-# Como usar o Prova Easy (guia para iniciantes)
+# Como usar o Prova Easy 
 
 Este guia foi feito para quem não tem experiência com tecnologia.
 Siga os passos na ordem e você consegue montar uma prova do zero.
